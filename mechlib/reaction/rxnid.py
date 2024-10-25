@@ -89,8 +89,9 @@ def _id_reaction(rxn_info, thy_info, save_prefix):
         for i, path in enumerate(prd_paths):
             print(f'     - product {i+1}: {path}')
         zrxn_objs = automol.reac.from_geometries(
-            rct_geos, prd_geos, struc_typ="zmat", stereo=True)
+            rct_geos, prd_geos, struc_typ="zmat", stereo=True, enant=False)
 
+        # AVC comment: Why is this necessary? Is this a bug I need to fix?
         if not zrxn_objs and len(rxn_info[2][0]) == 2:
             if rxn_info[2][0][0] > 1 and rxn_info[2][0][1] > 1:
                 zrxn_objs = automol.reac.from_geometries(
@@ -103,8 +104,9 @@ def _id_reaction(rxn_info, thy_info, save_prefix):
         rct_ichs, prd_ichs = rxn_ichs[0], rxn_ichs[1]
 
         zrxn_objs = automol.reac.from_chis(
-            rct_ichs, prd_ichs, struc_typ='zmat', stereo=True)
+            rct_ichs, prd_ichs, struc_typ='zmat', stereo=True, enant=False)
 
+        # AVC comment: Why is this necessary? Is this a bug I need to fix?
         if not zrxn_objs and len(rxn_info[2][0]) == 2:
             if rxn_info[2][0][0] > 1 and rxn_info[2][0][1] > 1:
                 zrxn_objs = automol.reac.from_chis(
