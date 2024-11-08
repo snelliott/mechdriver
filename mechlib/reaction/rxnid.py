@@ -121,6 +121,8 @@ def _id_reaction(rxn_info, thy_info, save_prefix):
             zma = automol.reac.ts_structure(zrxn_obj)
             zrxns += (zrxn,)
             zmas += (zma,)
+        if len(zrxns) == 0 and len(zmas) == 0:
+            zrxns, zmas = None, None
     else:
         zrxns, zmas = None, None
 
