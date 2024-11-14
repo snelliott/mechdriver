@@ -25,9 +25,11 @@ def make_pes_label_dct(pes_label_dct, rxn_lst, pes_idx,
         tsname = base_tsname(pes_idx, chnl_idx)
         if tsname + '_0' in spc_dct:
             rclass = spc_dct[tsname+'_0']['class']
-        else:
+        elif tsname + '_1' in spc_dct:
             rclass = spc_dct[tsname+'_1']['class']
-
+        else: 
+            raise ValueError('TS {} not found. check workflow and data'.format(tsname))
+            
         # Build labels
         pes_label_dct.update(
             _make_channel_label_dct(
