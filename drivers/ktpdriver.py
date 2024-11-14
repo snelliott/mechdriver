@@ -153,9 +153,10 @@ def _process(tsk, ktp_tsk_lst, pes_grp_rlst,
         # Obtain all of the transitions states
         ioprinter.message(
             'Identifying reaction classes for transition states...')
-        ts_dct = parser.spc.ts_dct_from_ktptsks(
+        ts_dct, rxn_lst = parser.spc.ts_dct_from_ktptsks(
             pes_idx, rxn_lst, ktp_tsk_lst, spc_mod_dct,
             spc_dct, run_prefix, save_prefix, nprocs=nprocs)
+        # for non-identified/assigned TSs, should we re-write the rxn_lst???
         spc_dct = parser.spc.combine_sadpt_spc_dcts(
             ts_dct, spc_dct, glob_dct)
 

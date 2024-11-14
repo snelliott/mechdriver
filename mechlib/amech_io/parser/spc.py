@@ -275,15 +275,22 @@ def ts_dct_from_ktptsks(pes_idx, rxn_lst, ktp_tsk_lst,
             break
 
     ts_dct = {}
+    new_rxn_lst = []
     for rxn in rxn_lst:
-        ts_dct.update(
-            ts_dct_sing_chnl(
-                pes_idx, rxn,
-                spc_dct, run_prefix, save_prefix,
-                thy_info=thy_info, ini_thy_info=ini_thy_info)
-        )
-
-    return ts_dct
+        ts_dct_rxn = ts_dct_sing_chnl(
+            pes_idx, rxn,
+            spc_dct, run_prefix, save_prefix,
+            thy_info=thy_info, ini_thy_info=ini_thy_info)
+        if  ts_dct_rxn:
+            ts_dct.update(
+                ts_dct_rxn
+            )
+            new_rxn_lst.append(rxn)
+        else:
+            print('*Warning ts for rxn {} not found and not used to build ktp input.'.format(rxn))
+            # ideally: if it's a wellskipping rxn, keep going, otherwise, die
+            
+    return ts_dct, new_rxn_lst
 
 
 def ts_dct_from_proctsks(pes_idx, proc_tsk_lst, rxn_lst, spc_mod_dct_i,
