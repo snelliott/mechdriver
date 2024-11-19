@@ -13,10 +13,9 @@ from ..base import STATUS_WIDTH, Status, check_log, colored_status_string
 from ._0setup import (
     INFO_FILE,
     SUBTASK_DIR,
-    InfoKey,
-    TableKey,
+    # InfoKey,
+    # TableKey,
     Task,
-    read_task_list,
 )
 
 

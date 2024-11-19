@@ -52,15 +52,13 @@ def subtasks_():
 
 
 @subtasks_.command("setup")
+@click.argument("paths", nargs=-1)
 @click.option(
-    "-p", "--path", default=".", show_default=True, help="The job run directory"
-)
-@click.option(
-    "-o",
-    "--out-path",
+    "-n",
+    "--dir-name",
     default=subtasks.SUBTASK_DIR,
     show_default=True,
-    help="The output path of the subtask directories",
+    help="The subtask directory name",
 )
 @click.option(
     "-s",
@@ -87,23 +85,26 @@ def subtasks_():
     ),
 )
 def subtasks_setup_(
-    path: str = ".",
-    out_path: str = subtasks.SUBTASK_DIR,
+    paths: tuple[str, ...],
+    dir_name: str = subtasks.SUBTASK_DIR,
     save_path: str | None = None,
     run_path: str | None = None,
     task_groups: str = "els,thermo,ktp",
 ):
-    """Set-up subtasks from a user-supplied AutoMech directory
+    """Set up subtasks from a user-supplied AutoMech directory
 
-    The AutoMech directory must contain an `inp/` subdirectory with the following
+    Passing multiple paths will do this for multiple directories.
+
+    Each AutoMech directory must contain an `inp/` subdirectory with the following
     required files: run.dat, theory.dat, models.dat, species.csv, mechanism.dat
     """
-    subtasks.setup(
-        path=path,
-        out_path=out_path,
+    paths = paths if paths else (".",)
+    subtasks.setup_multiple(
+        paths=paths,
+        dir_name=dir_name,
         save_path=save_path,
         run_path=run_path,
-        task_groups=task_groups.split(","),
+        task_group_keys=task_groups.split(","),
     )
 
 
@@ -112,9 +113,17 @@ def subtasks_setup_(
 @click.option(
     "-p",
     "--path",
+    default=(".",),
+    show_default=True,
+    help="A directory containing the subtask folder",
+    multiple=True,
+)
+@click.option(
+    "-n",
+    "--dir-name",
     default=subtasks.SUBTASK_DIR,
     show_default=True,
-    help="The subtask directory",
+    help="The subtask directory name",
 )
 @click.option(
     "-a",
@@ -139,7 +148,8 @@ def subtasks_setup_(
 )
 def subtasks_run_(
     nodes: tuple[str, ...],
-    path: str = subtasks.SUBTASK_DIR,
+    path: str = (".",),
+    dir_name: str = subtasks.SUBTASK_DIR,
     activation_hook: str | None = None,
     statuses: str = f"{Status.TBD.value}",
     tar: bool = False,
@@ -152,6 +162,7 @@ def subtasks_run_(
         csed-00{08..10}
 
     """
+    paths = path
     # For convenience, grab the Pixi activation hook automatically, if using Pixi
     # environment and activation hook is `None`
     result = subprocess.run(["pixi", "shell-hook"], capture_output=True, text=True)
@@ -159,8 +170,9 @@ def subtasks_run_(
         activation_hook = result.stdout
 
     subtasks.run(
-        path=path,
+        paths=paths,
         nodes=nodes,
+        dir_name=dir_name,
         activation_hook=activation_hook,
         statuses=list(map(Status, statuses.split(","))),
         tar=tar,

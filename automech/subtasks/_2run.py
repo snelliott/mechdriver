@@ -1,6 +1,7 @@
 """ Standalone script to run AutoMech subtasks in parallel on an Ad Hoc SSH Cluster
 """
 
+import itertools
 import subprocess
 import tarfile
 from collections.abc import Sequence
@@ -10,14 +11,7 @@ import pandas
 import yaml
 
 from ..base import Status
-from ._0setup import (
-    INFO_FILE,
-    SUBTASK_DIR,
-    InfoKey,
-    TableKey,
-    Task,
-    read_task_list,
-)
+from ._0setup import INFO_FILE, SUBTASK_DIR, SubtasksInfo, Task #, read_task_list
 from ._1status import log_paths_with_check_results, parse_subtask_status
 
 SCRIPT_DIR = Path(__file__).parent / "scripts"
@@ -25,8 +19,9 @@ RUN_SCRIPT = str(SCRIPT_DIR / "run_adhoc.sh")
 
 
 def run(
-    path: str | Path = SUBTASK_DIR,
+    paths: Sequence[str | Path] = (".",),
     nodes: Sequence[str] | None = None,
+    dir_name: str = SUBTASK_DIR,
     activation_hook: str | None = None,
     statuses: Sequence[Status] = (Status.TBD,),
     tar: bool = False,
@@ -41,28 +36,31 @@ def run(
     :param statuses: A comma-separated list of status to run or re-run
     :param tar: Tar the subtask data and save filesystem after running?
     """
-    path = Path(path)
-    assert (
-        path.exists()
-    ), f"Path not found: {path}.\nDid you run `automech subtasks setup` first?"
+    paths = [Path(p) / dir_name for p in paths]
 
-    info_path = path / INFO_FILE
-    info_dct = yaml.safe_load(info_path.read_text())
+    # Make sure the paths and their run and save directories exist
+    for path in paths:
+        assert (
+            path.exists()
+        ), f"Path not found: {path}.\nDid you run `automech subtasks setup` first?"
 
-    group_ids = info_dct[InfoKey.group_ids]
-    work_path = info_dct[InfoKey.work_path]
-    run_path = Path(info_dct[InfoKey.run_path])
-    save_path = Path(info_dct[InfoKey.save_path])
+        info_path = path / INFO_FILE
+        info_dct = yaml.safe_load(info_path.read_text())
 
-    run_path.mkdir(exist_ok=True)
-    save_path.mkdir(exist_ok=True)
+        group_ids = info_dct[InfoKey.group_ids]
+        work_path = info_dct[InfoKey.work_path]
+        run_path = Path(info_dct[InfoKey.run_path])
+        save_path = Path(info_dct[InfoKey.save_path])
+
+        run_path.mkdir(exist_ok=True)
+        save_path.mkdir(exist_ok=True)
 
     for group_id in group_ids:
-        tasks = read_task_list(path / f"{group_id}.yaml")
+        tasks = read_task_list(paths / f"{group_id}.yaml")
         if not tasks:
             continue
 
-        df = pandas.read_csv(path / f"{group_id}.csv")
+        df = pandas.read_csv(paths / f"{group_id}.csv")
         for task_key, row in df.iterrows():
             task: Task = tasks[task_key]
             assert row[TableKey.task] == task.name, f"{row} does not match {task.name}"
@@ -96,7 +94,7 @@ def run(
                 subprocess.run(run_args)
 
     if tar:
-        tar_subtask_data(path)
+        tar_subtask_data(paths)
 
 
 def tar_subtask_data(path: str | Path = SUBTASK_DIR) -> None:
