@@ -11,7 +11,7 @@ import pandas
 import yaml
 
 from ..base import Status
-from ._0setup import INFO_FILE, SUBTASK_DIR, SubtasksInfo, Task #, read_task_list
+from ._0setup import INFO_FILE, SUBTASK_DIR, SubtasksInfo, Task
 from ._1status import log_paths_with_check_results, parse_subtask_status
 
 SCRIPT_DIR = Path(__file__).parent / "scripts"
@@ -36,24 +36,65 @@ def run(
     :param statuses: A comma-separated list of status to run or re-run
     :param tar: Tar the subtask data and save filesystem after running?
     """
+    # Determine paths
     paths = [Path(p) / dir_name for p in paths]
+    for path in paths:
+        assert (
+            path.exists()
+        ), f"Path not found: {path}.\nDid you run `automech subtasks setup` first?"
+
+    # Read in subtask information
+    infos = [SubtasksInfo(**yaml.safe_load((p / INFO_FILE).read_text())) for p in paths]
+
+    # Make sure the run and save directories exist
+    for info in infos:
+        (info.root_path / info.run_path).mkdir(exist_ok=True)
+        (info.root_path / info.save_path).mkdir(exist_ok=True)
+
+    # Resolve paths relative to the current working directory
+    infos: list[SubtasksInfo] = [p / i for p, i in zip(paths, infos, strict=True)]
+
+    # Zip tasks together
+    task_lsts = list(
+        itertools.zip_longest(*(itertools.chain(*i.task_groups) for i in infos))
+    )
+    print(len(task_lsts))
+
+    import sys
+
+    sys.exit()
 
     # Make sure the paths and their run and save directories exist
+    group_ids = set()
     for path in paths:
         assert (
             path.exists()
         ), f"Path not found: {path}.\nDid you run `automech subtasks setup` first?"
 
         info_path = path / INFO_FILE
-        info_dct = yaml.safe_load(info_path.read_text())
+        info = SubtasksInfo(**yaml.safe_load(info_path.read_text()))
 
-        group_ids = info_dct[InfoKey.group_ids]
-        work_path = info_dct[InfoKey.work_path]
-        run_path = Path(info_dct[InfoKey.run_path])
-        save_path = Path(info_dct[InfoKey.save_path])
+        group_ids |= set(info.group_ids)
+        run_path = Path(info.root_path) / info.run_path
+        save_path = Path(info.root_path) / info.save_path
 
         run_path.mkdir(exist_ok=True)
         save_path.mkdir(exist_ok=True)
+
+    # for group_id in group_ids:
+    #     tasks_lst = list(
+    #         itertools.zip_longest(
+    #             *(read_task_list(p / f"{group_id}.yaml") for p in paths)
+    #         )
+    #     )
+    #     for tasks in tasks_lst:
+
+    #     print(len(paths))
+    #     print(len(tasks_lst))
+
+    import sys
+
+    sys.exit()
 
     for group_id in group_ids:
         tasks = read_task_list(paths / f"{group_id}.yaml")
