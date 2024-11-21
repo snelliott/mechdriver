@@ -1,10 +1,8 @@
 """ Standalone script to break an AutoMech input into subtasks for parallel execution
 """
 
-import dataclasses
 import io
 import itertools
-import os
 import re
 import textwrap
 from collections import defaultdict
@@ -14,6 +12,7 @@ from pathlib import Path
 import automol
 import more_itertools as mit
 import pandas
+import pydantic
 import pyparsing as pp
 import yaml
 from pyparsing import common as ppc
@@ -39,58 +38,44 @@ ROTOR_TASKS = ("hr_scan",)
 SAMP_TASKS = ("conf_samp",)
 
 
-@dataclasses.dataclass
-class Subtask:
+class Subtask(pydantic.BaseModel):
     key: str
     nworkers: int
-    path: str
+    path: Path
 
-    def __post_init__(self):
-        self.key = str(self.key)
-        self.nworkers = int(self.nworkers)
-        self.path = str(self.path)
+    @pydantic.field_serializer("path")
+    def serialize_path(self, path: Path, _):
+        return str(path)
 
-    def __iter__(self):
-        yield from self.__dict__.items()
+    def __rtruediv__(self, path: str | Path):
+        return self.model_copy(update={"path": path / self.path})
 
 
-@dataclasses.dataclass
-class Task:
+class Task(pydantic.BaseModel):
     name: str
     line: str
     mem: int
     nprocs: int
     subtasks: list[Subtask]
 
-    def __post_init__(self):
-        self.name = str(self.name)
-        self.line = str(self.line)
-        self.mem = int(self.mem)
-        self.nprocs = int(self.nprocs)
-        self.subtasks = [Subtask(**dict(s)) for s in self.subtasks]
-
-    def __iter__(self):
-        yield from {**self.__dict__, "subtasks": list(map(dict, self.subtasks))}.items()
+    def __rtruediv__(self, path: str | Path):
+        return self.model_copy(update={"subtasks": [path / s for s in self.subtasks]})
 
 
-@dataclasses.dataclass
-class SubtasksInfo:
-    work_path: str
-    run_path: str
-    save_path: str
+class SubtasksInfo(pydantic.BaseModel):
+    root_path: Path
+    run_path: Path
+    save_path: Path
     task_groups: list[list[Task]]
 
-    def __post_init__(self):
-        self.work_path = str(self.work_path)
-        self.run_path = str(self.run_path)
-        self.save_path = str(self.save_path)
-        self.task_groups = [[Task(**dict(t)) for t in ts] for ts in self.task_groups]
+    @pydantic.field_serializer("root_path", "run_path", "save_path")
+    def serialize_path(self, path: Path):
+        return str(path)
 
-    def __iter__(self):
-        yield from {
-            **self.__dict__,
-            "task_groups": [list(map(dict, ts)) for ts in self.task_groups],
-        }.items()
+    def __rtruediv__(self, path: str | Path):
+        return self.model_copy(
+            update={"task_groups": [[path / t for t in ts] for ts in self.task_groups]}
+        )
 
 
 def setup_multiple(
@@ -197,12 +182,12 @@ def setup(
     print(f"Writing subtask information to {info_path}")
     print()
     info = SubtasksInfo(
-        work_path=str(path.resolve()),
+        root_path=str(path.resolve()),
         save_path=str(save_path),
         run_path=str(run_path),
         task_groups=task_groups,
     )
-    info_path.write_text(yaml.safe_dump(dict(info)))
+    info_path.write_text(yaml.safe_dump(info.model_dump()))
 
 
 def setup_subtask_group(
