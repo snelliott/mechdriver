@@ -1,10 +1,8 @@
 """ Standalone script to break an AutoMech input into subtasks for parallel execution
 """
 
-import dataclasses
 import io
 import itertools
-import os
 import re
 import textwrap
 from collections import defaultdict
@@ -14,6 +12,7 @@ from pathlib import Path
 import automol
 import more_itertools as mit
 import pandas
+import pydantic
 import pyparsing as pp
 import yaml
 from pyparsing import common as ppc
@@ -39,36 +38,84 @@ ROTOR_TASKS = ("hr_scan",)
 SAMP_TASKS = ("conf_samp",)
 
 
-class TableKey:
-    task = "task"
+class Subtask(pydantic.BaseModel):
+    key: str
+    nworkers: int
+    path: Path
+
+    @pydantic.field_serializer("path")
+    def serialize_path(self, path: Path, _):
+        return str(path)
+
+    def __rtruediv__(self, path: str | Path):
+        return self.model_copy(update={"path": path / self.path})
 
 
-class InfoKey:
-    group_ids = "group_ids"  # identifiers for each subtask group, in the order they should be run
-    run_path = "run_path"  # path to the run filesystem
-    save_path = "save_path"  # path to the save filesystem
-    # If relative paths are given for `path`, `save_path`, and/or `run_path`, they will
-    # be relative to the following `work_path`, which is the user's current working
-    # directory when they run the setup command:
-    work_path = "work_path"  # path to where the user ran the command
-
-
-@dataclasses.dataclass
-class Task:
+class Task(pydantic.BaseModel):
     name: str
     line: str
     mem: int
     nprocs: int
-    subtask_keys: list[str]
-    subtask_nworkers: list[int]
+    subtasks: list[Subtask]
+
+    def __rtruediv__(self, path: str | Path):
+        return self.model_copy(update={"subtasks": [path / s for s in self.subtasks]})
+
+
+class SubtasksInfo(pydantic.BaseModel):
+    run_path: Path
+    save_path: Path
+    task_groups: list[list[Task]]
+
+    @pydantic.field_serializer("run_path", "save_path")
+    def serialize_path(self, path: Path):
+        return str(path)
+
+    def __rtruediv__(self, path: str | Path):
+        return self.model_copy(
+            update={"task_groups": [[path / t for t in ts] for ts in self.task_groups]}
+        )
+
+
+def setup_multiple(
+    paths: Sequence[str | Path],
+    dir_name: str = SUBTASK_DIR,
+    save_path: str | Path | None = None,
+    run_path: str | Path | None = None,
+    task_group_keys: Sequence[str] = DEFAULT_TASK_GROUPS,
+):
+    """Creates run directories for each task/species/TS and returns the paths in tables
+
+    Task types: 'els', 'thermo', or 'ktp'
+    Subtask types: 'spc', 'pes', or `None` (=all species and/or reactions)
+
+    :param paths: The paths to the AutoMech inputs to split into subtasks
+    :param dir_name: The name of the subtask directory to write to
+        (will be created at `path`)
+    :param save_path: The path to the save filesystem
+        (if `None`, the value in run.dat is used)
+    :param run_path: The path to the run filesystem
+        (if `None`, the value in run.dat is used)
+    :param task_groups: The task groups to set up
+    :return: DataFrames of run paths, whose columns (species/TS index) are independent
+        and can be run in parallel, but whose rows (tasks) are potentially sequential
+    """
+    for path in paths:
+        setup(
+            path=path,
+            dir_name=dir_name,
+            save_path=save_path,
+            run_path=run_path,
+            task_group_keys=task_group_keys,
+        )
 
 
 def setup(
     path: str | Path,
-    out_path: str | Path = SUBTASK_DIR,
+    dir_name: str = SUBTASK_DIR,
     save_path: str | Path | None = None,
     run_path: str | Path | None = None,
-    task_groups: Sequence[str] = DEFAULT_TASK_GROUPS,
+    task_group_keys: Sequence[str] = DEFAULT_TASK_GROUPS,
 ):
     """Creates run directories for each task/species/TS and returns the paths in tables
 
@@ -76,8 +123,8 @@ def setup(
     Subtask types: 'spc', 'pes', or `None` (=all species and/or reactions)
 
     :param path: The path to the AutoMech input to split into subtasks
-    :param out_path: The root path of the output (will be filled with subtask
-        directories, CSVs, and YAML file)
+    :param dir_name: The name of the subtask directory to write to
+        (will be created at `path`)
     :param save_path: The path to the save filesystem
         (if `None`, the value in run.dat is used)
     :param run_path: The path to the run filesystem
@@ -87,14 +134,19 @@ def setup(
         and can be run in parallel, but whose rows (tasks) are potentially sequential
     """
     # Pre-process the task groups
-    task_groups = list(task_groups)
-    if "els" in task_groups:
-        idx = task_groups.index("els")
-        task_groups[idx : idx + 1] = ("els-spc", "els-pes")
-    assert all(g in GROUP_ID for g in task_groups), f"{task_groups} not in {GROUP_ID}"
+    task_group_keys = list(task_group_keys)
+    if "els" in task_group_keys:
+        idx = task_group_keys.index("els")
+        task_group_keys[idx : idx + 1] = ("els-spc", "els-pes")
+    assert all(
+        g in GROUP_ID for g in task_group_keys
+    ), f"{task_group_keys} not in {GROUP_ID}"
 
     # Read input files from source path
     path = Path(path)
+    print("----")
+    print(f"Setting up subtasks at path {path.resolve()}")
+
     file_dct = read_input_files(path)
     run_dct = parse_run_dat(file_dct.get("run.dat"))
 
@@ -105,35 +157,35 @@ def setup(
     run_dct["input"] = f"run_prefix = {run_path}\nsave_prefix = {save_path}"
 
     # Create the path for the subtask directories
-    out_path = Path(out_path)
-    out_path.mkdir(exist_ok=True)
+    dir_path = path / dir_name
+    dir_path.mkdir(exist_ok=True)
 
     # Set up the subtasks for each group
-    run_group_ids = []
-    for task_group in task_groups:
-        group_id = GROUP_ID.get(task_group)
-        task_type, key_type = GROUP_TASK_AND_KEY_TYPE.get(task_group)
-        ret = setup_subtask_group(
+    task_groups = []
+    for task_group_key in task_group_keys:
+        group_id = GROUP_ID.get(task_group_key)
+        task_type, key_type = GROUP_TASK_AND_KEY_TYPE.get(task_group_key)
+        tasks = setup_subtask_group(
             run_dct,
             file_dct,
             task_type=task_type,
             key_type=key_type,
             group_id=group_id,
-            out_path=out_path,
+            dir_path=dir_path,
         )
-        if ret is not None:
-            run_group_ids.append(group_id)
+        if tasks is not None:
+            task_groups.append(tasks)
 
     # Write the subtask info to YAML
-    info_path = out_path / INFO_FILE
-    print(f"Writing general information to {info_path}")
-    info_dct = {
-        InfoKey.save_path: save_path,
-        InfoKey.run_path: run_path,
-        InfoKey.work_path: os.getcwd(),
-        InfoKey.group_ids: run_group_ids,
-    }
-    info_path.write_text(yaml.safe_dump(info_dct))
+    info_path = dir_path / INFO_FILE
+    print(f"Writing subtask information to {info_path}")
+    print()
+    info = SubtasksInfo(
+        save_path=str(save_path),
+        run_path=str(run_path),
+        task_groups=task_groups,
+    )
+    info_path.write_text(yaml.safe_dump(info.model_dump()))
 
 
 def setup_subtask_group(
@@ -142,8 +194,8 @@ def setup_subtask_group(
     task_type: str,
     key_type: str | None = None,
     group_id: str | int | None = None,
-    out_path: str | Path = SUBTASK_DIR,
-) -> pandas.DataFrame | None:
+    dir_path: str | Path = SUBTASK_DIR,
+) -> list[Task] | None:
     """Set up a group of subtasks from a run dictionary, creating run directories and
     returning them in a table
 
@@ -163,49 +215,37 @@ def setup_subtask_group(
     # Blocks that must be included in the run.dat
     block_keys = ["input"] + (["pes", "spc"] if key_type is None else [key_type])
 
-    # Parse tasks and subtask keys for this group
-    tasks = determine_task_list(run_dct, file_dct, task_type, key_type)
+    # Determine the task list
+    tasks = determine_task_list(
+        run_dct,
+        file_dct,
+        task_type,
+        key_type=key_type,
+        group_id=group_id,
+    )
 
     # If the task list is empty, return `None`
     if not tasks:
         return None
 
-    # Get the specs for each task and write them to a YAML file
-    yaml_path = out_path / f"{group_id}.yaml"
-    print(f"Writing task specs to {yaml_path}")
-    write_task_list(tasks, yaml_path)
-
     # Create directories for each subtask and save the paths in a DataFrame
-    row_dcts = []
-    for task_key, task in enumerate(tasks):
-        row_dct = {TableKey.task: task.name}
-        task_path = out_path / f"{group_id}_{task_key:02d}_{task.name}"
-        print(f"Setting up subtask directories in {task_path}")
+    for task in tasks:
+        print(f"Setting up subtask directories for {task.name}")
         task_run_dct = {k: v for k, v in run_dct.items() if k in block_keys}
         task_run_dct[task_type] = task.line
-        for key in task.subtask_keys:
+        for subtask in task.subtasks:
             # Generate the subtask path
-            subtask_path = task_path / format_subtask_key(key)
+            subtask_path = dir_path / subtask.path
             subtask_path.mkdir(parents=True, exist_ok=True)
             # Generate the input file dictionary
             subtask_run_dct = task_run_dct.copy()
-            if key != ALL_KEY:
-                subtask_run_dct[key_type] = key
+            if subtask.key != ALL_KEY:
+                subtask_run_dct[key_type] = subtask.key
             subtask_file_dct = {**file_dct, "run.dat": form_run_dat(subtask_run_dct)}
             # Write the input files and append the path to the current dataframe row
             write_input_files(subtask_path, subtask_file_dct)
-            row_dct[key] = subtask_path
-        row_dcts.append(row_dct)
 
-    df = pandas.DataFrame(row_dcts)
-
-    # Write the subtask table to CSV
-    csv_path = out_path / f"{group_id}.csv"
-    print(f"Writing subtask table to {csv_path}")
-    df.to_csv(csv_path, index=False)
-    print()
-
-    return df
+    return tasks
 
 
 def determine_task_list(
@@ -213,6 +253,7 @@ def determine_task_list(
     file_dct: dict[str, str],
     task_type: str,
     key_type: str | None = None,
+    group_id: str | int | None = None,
 ) -> list[Task]:
     """Set up a group of subtasks from a run dictionary, creating run directories and
     returning them in a table
@@ -222,20 +263,29 @@ def determine_task_list(
     keys = subtask_keys_from_run_dict(
         run_dct, task_type, key_type, subpes_dct=subpes_dct
     )
-
-    tasks: list[Task] = [
-        Task(
-            name=parse_task_name(task_line),
-            line=task_line,
-            mem=parse_task_memory(task_line, file_dct),
-            nprocs=parse_task_nprocs(task_line, file_dct),
-            subtask_keys=keys,
-            subtask_nworkers=parse_subtasks_nworkers(
-                task_line, file_dct, subtask_keys=keys
-            ),
+    task_lines = task_lines_from_run_dict(run_dct, task_type, key_type)
+    tasks = []
+    for task_key, task_line in enumerate(task_lines):
+        task_name = parse_task_name(task_line)
+        task_path = Path(f"{group_id}_{task_key:02d}_{task_name}")
+        nworkers_lst = parse_subtasks_nworkers(task_line, file_dct, keys)
+        subtasks = [
+            Subtask(
+                key=key,
+                nworkers=nworkers,
+                path=str(task_path / format_subtask_key(key)),
+            )
+            for key, nworkers in zip(keys, nworkers_lst, strict=True)
+        ]
+        tasks.append(
+            Task(
+                name=task_name,
+                line=task_line,
+                mem=parse_task_memory(task_line, file_dct),
+                nprocs=parse_task_nprocs(task_line, file_dct),
+                subtasks=subtasks,
+            )
         )
-        for task_line in task_lines_from_run_dict(run_dct, task_type, key_type)
-    ]
 
     if tasks and task_type in COMBINED_TASK_GROUPS:
         idx = next((i for i, t in enumerate(tasks) if t.name == "run_mess"), 0)
@@ -448,7 +498,9 @@ def sample_count_from_inchi(
 
 
 # Functions acting on mechanism.dat data
-def subpes_dict_from_mechanism_dat(mechanism_dat: str) -> dict[str, list[list[str]]] | None:
+def subpes_dict_from_mechanism_dat(
+    mechanism_dat: str,
+) -> dict[str, list[list[str]]] | None:
     """Determine the groups of channels for each sub-PES from the mechanism.dat file
 
     Structure of the return dictionary:
@@ -643,29 +695,6 @@ def task_lines_from_run_dict(
         ]
 
     return lines
-
-
-# Task read/write
-def write_task_list(yaml_tasks: list[Task], path: str | Path) -> None:
-    """Write a task list out in YAML format
-
-    :param tasks: The list of tasks
-    :param path: The path to the YAML file to write
-    """
-    path = Path(path)
-    yaml_tasks = list(map(dataclasses.asdict, yaml_tasks))
-    path.write_text(yaml.safe_dump(yaml_tasks, default_flow_style=None))
-
-
-def read_task_list(path: str | Path) -> list[Task]:
-    """Read a list of tasks from a YAML file
-
-    :param path: The path to the YAML file
-    :return: The list of tasks
-    """
-    path = Path(path)
-    yaml_tasks = yaml.safe_load(path.read_text())
-    return [Task(**d) for d in yaml_tasks]
 
 
 # Generic string formatting functions

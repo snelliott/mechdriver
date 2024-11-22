@@ -2,7 +2,7 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-WORK_PATH=${1}
+IFS="," read -ra WORK_PATHS <<< "${1}"      # list of working directories
 SUBTASK_MEM=${2}        # memory required per job
 SUBTASK_NPROCS=${3}     # number of cores required per job
 IFS="," read -ra SUBTASK_PATHS <<< "${4}"   # list of run directories
@@ -11,7 +11,7 @@ IFS="," read -ra NODES <<< "${6}"           # list of nodes for running
 ACTIVATION_HOOK=${7}    # activation hook
 NWORK_MAX=10            # maximum SSH login capacity for some nodes
 
-echo "Working directory: ${WORK_PATH}"
+echo "Working directories: ${WORK_PATHS[@]}"
 echo "Subtask memory: ${SUBTASK_MEM}"
 echo "Subtask nprocs: ${SUBTASK_NPROCS}"
 echo "Subtask paths: ${SUBTASK_PATHS[@]}"
@@ -36,17 +36,19 @@ for node in "${NODES[@]}"; do
 done
 SSHLOGIN=$(IFS=,; echo "${SSHLOGINS[*]}")
 
-LOG_FILE="{1}/{2}"
+LOG_FILE="{2}/{3}"
 IS_RUNNING_FILE="${LOG_FILE}_IS_RUNNING"
-RUN_COMMAND="automech run -p {1} &> ${LOG_FILE}"
+RUN_COMMAND="automech run -p {2} &> ${LOG_FILE}"
 CHECK_COMMAND="automech check-log -p ${LOG_FILE}"
 
 parallel --sshlogin ${SSHLOGIN} "
-    cd ${WORK_PATH};
+(
+    cd {1};
     touch ${IS_RUNNING_FILE};
     eval ${ACTIVATION_HOOK@Q} &&
     printf \"Host: \$(hostname)\n| Working directory: \${PWD}\n| Command: ${RUN_COMMAND}\n\" &&
     ${RUN_COMMAND};
     rm ${IS_RUNNING_FILE};
     ${CHECK_COMMAND}
-" ::: ${SUBTASK_PATHS[*]} :::+ ${SUBTASK_LOGS[*]}
+)
+" ::: ${WORK_PATHS[*]} :::+ ${SUBTASK_PATHS[*]} :::+ ${SUBTASK_LOGS[*]}

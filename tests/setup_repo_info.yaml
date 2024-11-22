@@ -1,5 +1,0 @@
-autochem: 'aa81b691 Fix: Float comparison in Cremer-Pople test'
-autofile: 'b6f1fe3 Merge pull request #116 from avcopan/dev'
-autoio: 'b3693f6 Merge pull request #203 from lpratalimaffei/dev'
-mechanalyzer: '888b887 Merge pull request #310 from NVJY/dev'
-mechdriver: '1461cae4 Fix: Turn off enantiomers in TS stereoexpansion'

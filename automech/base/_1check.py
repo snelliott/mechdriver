@@ -18,10 +18,7 @@ class Status(enum.Enum):
     OK_2E = "OK_2E"  # All but 2 log files succeeded
 
 
-STATUS_WIDTH = 7
-
-
-def check_log(path: str = ".", log: bool=False) -> tuple[Status, str | None]:
+def check_log(path: str = ".", log: bool = False) -> tuple[Status, str | None]:
     """Check an AutoMech log file to see if it succeeded
 
     :param path: The path to the log file or directory. If the path is a directory, the
@@ -61,7 +58,7 @@ def _check_log(log_path: str | Path) -> tuple[Status, str | None]:
     has_is_running_file = Path(f"{log_path}_IS_RUNNING").exists()
     if not has_exit_message:
         status = Status.RUNNING if has_is_running_file else Status.ERROR
-        line = log.splitlines()[-1] if log else ''
+        line = log.splitlines()[-1] if log else ""
         return (status, line)
 
     warning_match = re.search(r".*(?<!Future)Warning.*", log, flags=re.IGNORECASE)
@@ -70,7 +67,7 @@ def _check_log(log_path: str | Path) -> tuple[Status, str | None]:
     return (status, line)
 
 
-def colored_status_string(status: Status) -> str:
+def colored_status_string(status: Status, width: int = None) -> str:
     """Get a colored status string
 
     :param status: The status
@@ -86,4 +83,5 @@ def colored_status_string(status: Status) -> str:
         Status.OK_2E: "\033[95m",  # bright magenta
     }.get(status)
     color_end_code = "\033[0m"
-    return f"{color_start_code}{status.value:^{STATUS_WIDTH}}{color_end_code}"
+    width = max(len(s.value) for s in Status) if width is None else width
+    return f"{color_start_code}{status.value:^{width}}{color_end_code}"
