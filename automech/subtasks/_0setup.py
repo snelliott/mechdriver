@@ -63,12 +63,11 @@ class Task(pydantic.BaseModel):
 
 
 class SubtasksInfo(pydantic.BaseModel):
-    root_path: Path
     run_path: Path
     save_path: Path
     task_groups: list[list[Task]]
 
-    @pydantic.field_serializer("root_path", "run_path", "save_path")
+    @pydantic.field_serializer("run_path", "save_path")
     def serialize_path(self, path: Path):
         return str(path)
 
@@ -182,7 +181,6 @@ def setup(
     print(f"Writing subtask information to {info_path}")
     print()
     info = SubtasksInfo(
-        root_path=str(path.resolve()),
         save_path=str(save_path),
         run_path=str(run_path),
         task_groups=task_groups,
