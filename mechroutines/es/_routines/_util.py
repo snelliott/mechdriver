@@ -146,8 +146,13 @@ def gen_confs(zma, vma, num_conf, zrxn, constr_ats):
         syms = tuple(str(rda.GetSymbol()).title() for rda in atms)
         xyzs = tuple(map(tuple, mol.GetConformer(cid).GetPositions()))
         geos.append(automol.geom.from_data(syms, xyzs, angstrom=True))
-       
-    return [automol.zmat.from_geometry(vma, geoi) for geoi in geos]
+    
+    # This should account for the presence of dummies in the initial zmatrix
+    # But currently I keep dummies as He atoms when converting zmat to geo, so this should be fine
+    # _, zc_ = automol.zmat.geometry_with_conversion_info(zma)       
+    # return [automol.zmat.zmatrix_with_conversion_info(geoi, zc_=zc_) for geoi in geos]
+
+    return [automol.geom.from_geometry(vma, geoi) for geoi in geos]
 
 
 def subs_analysis(all_ring_atoms,all_ring_atoms_list, ngbs, geo, unconnected_keys):
