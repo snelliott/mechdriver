@@ -171,12 +171,13 @@ def subtasks_run_(
 
 
 @subtasks_.command("status")
+@click.argument("path")
 @click.option(
-    "-p",
-    "--path",
+    "-n",
+    "--dir-name",
     default=subtasks.SUBTASK_DIR,
     show_default=True,
-    help="The subtask directory",
+    help="The subtask directory name",
 )
 @click.option(
     "-c",
@@ -193,7 +194,10 @@ def subtasks_run_(
     help="Wrap to included this many subtask columns per row",
 )
 def subtasks_status_(
-    path: str = subtasks.SUBTASK_DIR, check_file: str = "check.log", wrap: int = 18
+    path: str = ".",
+    dir_name=subtasks.SUBTASK_DIR,
+    check_file: str = "check.log",
+    wrap: int = 18,
 ):
     """Check the status of running subtasks"""
-    subtasks.status(path=path, check_file=check_file, wrap=wrap)
+    subtasks.status(path=path, dir_name=dir_name, check_file=check_file, wrap=wrap)

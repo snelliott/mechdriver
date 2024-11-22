@@ -6,21 +6,17 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import more_itertools as mit
-import pandas
 import yaml
 
-from ..base import STATUS_WIDTH, Status, check_log, colored_status_string
-from ._0setup import (
-    INFO_FILE,
-    SUBTASK_DIR,
-    # InfoKey,
-    # TableKey,
-    Task,
-)
+from ..base import Status, check_log, colored_status_string
+from ._0setup import INFO_FILE, SUBTASK_DIR, SubtasksInfo, Task
 
 
 def status(
-    path: str | Path = SUBTASK_DIR, check_file: str = "check.log", wrap: int = 18
+    path: str | Path = ".",
+    dir_name: str = SUBTASK_DIR,
+    check_file: str = "check.log",
+    wrap: int = 18,
 ) -> None:
     """Check the status of running subtasks
 
@@ -35,52 +31,44 @@ def status(
         path.exists()
     ), f"Path not found: {path}.\nDid you run `automech subtasks setup` first?"
 
-    info_path = path / INFO_FILE
-    info_dct = yaml.safe_load(info_path.read_text())
-
-    group_ids = info_dct[InfoKey.group_ids]
-    work_path = info_dct[InfoKey.work_path]
+    info_file = path / dir_name / INFO_FILE
+    info = SubtasksInfo(**yaml.safe_load(info_file.read_text()))
 
     check_records = []
-    for group_id in group_ids:
-        df = pandas.read_csv(path / f"{group_id}.csv")
-        tasks = read_task_list(path / f"{group_id}.yaml")
-        twidth = task_column_width(tasks)
+    for tasks in info.task_groups:
         skeys = subtask_keys(tasks)
+        kwidth = key_column_width(tasks)
+        vwidth = value_column_width(tasks)
+        print(vwidth)
 
-        print_long_row_guide(twidth, len(skeys), wrap, char="#")
-        print_task_row(TableKey.task, skeys, label_width=twidth, wrap=wrap)
-        for task_key, row in df.iterrows():
-            task: Task = tasks[task_key]
-            assert row[TableKey.task] == task.name, f"{row} does not match {task.name}"
-
-            subtask_paths = list(map(row.get, skeys))
-            subtask_stats = []
-            for skey, spath in zip(skeys, subtask_paths, strict=True):
-                log_dct = log_paths_with_check_results(spath)
-                subtask_stats.append(
-                    colored_status_string(parse_subtask_status(log_dct=log_dct))
-                )
+        print_long_row_guide(
+            kwidth=kwidth, vwidth=vwidth, nvals=len(skeys), wrap=wrap, char="#"
+        )
+        print_task_row("task", skeys, kwidth=kwidth, vwidth=vwidth, wrap=wrap)
+        for task in tasks:
+            vals = []
+            for subtask in task.subtasks:
+                log_dct = log_paths_with_check_results(path / dir_name / subtask.path)
+                stat = parse_subtask_status(log_dct=log_dct)
+                vals.append(colored_status_string(stat, width=vwidth))
                 check_records.extend(
-                    (task.name, skey, p, s, L)
+                    (task.name, subtask.key, p, s, L)
                     for p, (s, L) in log_dct.items()
                     if s != Status.OK
                 )
-
-            print_task_row(task.name, subtask_stats, label_width=twidth, wrap=wrap)
-
+            print_task_row(task.name, vals, kwidth=kwidth, vwidth=vwidth, wrap=wrap)
         print()
 
     check_lines = []
     if check_records:
-        check_lines.append(f"Non-OK log files in {work_path}:")
-        twidth = max(len(r[0]) for r in check_records)
-        swidth = max(len(r[1]) for r in check_records)
+        check_lines.append(f"Non-OK log files in {path / dir_name}:")
+        kwidth = max(len(r[0]) for r in check_records)
+        vwidth = max(len(r[1]) for r in check_records)
         pwidth = max(len(r[2]) for r in check_records)
         for task_name, skey, log_path, stat, line in check_records:
             stat = colored_status_string(stat)
             check_lines.append(
-                f"~{task_name:<{twidth}} {skey:<{swidth}} {log_path:<{pwidth}} {stat}"
+                f"~{task_name:<{kwidth}} {skey:<{vwidth}} {log_path:<{pwidth}} {stat}"
             )
 
             if line is not None:
@@ -141,15 +129,6 @@ def parse_subtask_status(
     return Status.WARNING
 
 
-def task_column_width(tasks: list[Task]) -> int:
-    """Get the appropriate column width for a list of tasks
-
-    :param tasks: The list of tasks
-    :return: The column width
-    """
-    return max(map(len, (task.name for task in tasks)))
-
-
 def subtask_keys(tasks: list[Task]) -> list[str]:
     """Get the list of subtask keys
 
@@ -158,38 +137,63 @@ def subtask_keys(tasks: list[Task]) -> list[str]:
     :param tasks: The list of tasks
     :return: The subtask keys
     """
-    return list(mit.unique_everseen(itertools.chain(*(t.subtask_keys for t in tasks))))
+    return list(
+        mit.unique_everseen(
+            itertools.chain(*([s.key for s in t.subtasks] for t in tasks))
+        )
+    )
+
+
+def key_column_width(tasks: list[Task]) -> int:
+    """Get the appropriate column width for a list of tasks
+
+    :param tasks: The list of tasks
+    :return: The column width
+    """
+    return max(map(len, (task.name for task in tasks)))
+
+
+def value_column_width(tasks: list[Task]) -> int:
+    """Get the appropriate column width for a list of tasks
+
+    :param tasks: The list of tasks
+    :return: The column width
+    """
+    skeys = subtask_keys(tasks)
+    return max(*map(len, skeys), *(len(s.value) for s in Status))
 
 
 def print_task_row(
-    label: str, vals: Sequence[str], label_width: int, wrap: int
+    key: str, vals: Sequence[str], kwidth: int, vwidth: int, wrap: int
 ) -> None:
     """Print a single row in the task group table
 
-    :param label: The row label
+    :param key: The row label
     :param vals: The row values
-    :param label_width: The label column width
+    :param kwidth: The label column width
+    :param vwidth: The value column width
     :param wrap: Wrap the row values after this many columns
     """
     for chunk_vals in mit.chunked(vals, wrap):
-        row = f"{label:>{label_width}} "
-        row += " ".join(f"{v:^{STATUS_WIDTH}}" for v in chunk_vals)
+        row = f"{key:>{kwidth}} "
+        row += " ".join(f"{v:^{vwidth}}" for v in chunk_vals)
         print(row)
-        label = ""  # drop the label after the first chunk
+        key = ""  # drop the label after the first chunk
 
     # If wrapping, add an extra dividing line as a guide
-    print_long_row_guide(label_width, len(vals), wrap)
+    print_long_row_guide(kwidth=kwidth, vwidth=vwidth, nvals=len(vals), wrap=wrap)
 
 
 def print_long_row_guide(
-    label_width: int, nvals: int, wrap: int, char: str = "-"
+    kwidth: int, vwidth: int, nvals: int, wrap: int, char: str = "-"
 ) -> None:
     """Print a horizontal guide to guide the eye, if the row is long
 
-    :param label_width: The label column width
+    :param kwidth: The label column width
+    :param vwidth: The value column width
     :param wrap: Wrap the row values after this many columns
     :param char: The character to use for the separator, defaults to "-"
     """
     if nvals > wrap:
-        total_width = label_width + 1 + (STATUS_WIDTH + 1) * wrap
+        total_width = kwidth + 1 + (vwidth + 1) * wrap
         print(char * total_width)
