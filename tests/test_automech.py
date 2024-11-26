@@ -59,9 +59,9 @@ def test_signature():
     # (must match most recent commit that isn't a merge PR or test archive update)
     print("Checking whether mechdriver matches the signed version...")
     exclude_messages = (
-        "Merge pull request",
-        "Updates tests/archive.tgz",
-        "Merge .* into .*",
+        r"Updates tests/archive.tgz",
+        r"Merge pull request \S* from \S*",
+        r"Merge \S* into \S*",
     )
     exclude_grep = r"\|".join(exclude_messages)
     self_repo_prov = subprocess.check_output(
