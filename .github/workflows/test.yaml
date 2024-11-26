@@ -38,4 +38,5 @@ jobs:
       # Test
       - name: Test
         run: |
+          # pixi run pytest -n auto -v tests/
           pixi run pytest -v tests/

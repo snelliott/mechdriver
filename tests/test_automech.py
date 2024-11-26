@@ -44,12 +44,25 @@ class InvalidSignatureError(Exception):
         super().__init__("\n".join(lines))
 
 
+def unpack_archive() -> None:
+    """Un-tar a directory in its current location
+
+    :param path: The path where the AutoMech subtasks were set up
+    """
+    os.chdir(TEST_ROOT_DIR)
+    if ARCHIVE_FILE.exists():
+        print(f"Unpacking {ARCHIVE_FILE}...")
+        with tarfile.open(ARCHIVE_FILE, "r") as tar:
+            tar.extractall()
+
+
+# 1. Unpack the test archive (must happen before tests are run)
+unpack_archive()
+
+
 def test_signature():
     """Unpack archive and check provenance"""
     os.chdir(TEST_ROOT_DIR)
-
-    # 1. Unpack the test archive
-    unpack_archive()
 
     # 2. Read test provenance from signature file
     sign_dct = yaml.safe_load(SIGNATURE_FILE.read_text())
@@ -99,18 +112,6 @@ def test_workflow(name: str):
 
     with contextlib.redirect_stdout(Logger("out.log")):
         automech.run()
-
-
-def unpack_archive() -> None:
-    """Un-tar a directory in its current location
-
-    :param path: The path where the AutoMech subtasks were set up
-    """
-    os.chdir(TEST_ROOT_DIR)
-    if ARCHIVE_FILE.exists():
-        print(f"Unpacking {ARCHIVE_FILE}...")
-        with tarfile.open(ARCHIVE_FILE, "r") as tar:
-            tar.extractall()
 
 
 def are_equivalent_commit_hashes(hash1: str, hash2: str) -> bool:
