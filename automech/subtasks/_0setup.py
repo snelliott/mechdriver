@@ -612,7 +612,7 @@ def parse_mechanism_dat(mechanism_dat: str) -> dict[str, tuple[list[str], list[s
             pes = int(sort_info.get("pes"))
             channel = int(sort_info.get("channel"))
             reac_dct[f"{pes}: {channel}"] = tuple(
-                [s.strip() for s in re.split("\+(?!\s*\+)", r)]
+                [s.strip() for s in re.split(r"\+(?!\s*\+)", r)]
                 for r in re.split("=|=>|<=>", eq)
             )
 
