@@ -7,11 +7,13 @@ from pathlib import Path
 
 import automech
 import pytest
+import yaml
 from automech import test_utils
 from automech.test_utils import InvalidSignatureError
 
 ROOT_DIR = Path(__file__).parent.parent
 TEST_UTILS = test_utils.TestUtils(ROOT_DIR)
+TEST_DIRS = [n for n in yaml.safe_load(TEST_UTILS.config_file.read_text())]
 
 TEST_UTILS.extract_archived_tests()
 
@@ -34,7 +36,7 @@ def test_signature():
             raise InvalidSignatureError(f"\n   {signed_commit}\n!~ {current_commit}")
 
 
-@pytest.mark.parametrize("test_dir", TEST_UTILS.test_dirs)
+@pytest.mark.parametrize("test_dir", TEST_DIRS)
 def test_workflow(test_dir: str):
     """Test the entire workflow"""
     print(f"Running in {test_dir}...")
