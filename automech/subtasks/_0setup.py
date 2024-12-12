@@ -429,7 +429,7 @@ def parse_subtasks_nworkers(
             chis = [tuple(list(map(chi_dct.get, rgts)) for rgts in rxn) for rxn in rxns]
             gras_lst = [
                 list(
-                    map(automol.reac.ts_graph, automol.reac.from_chis(*c, stereo=True))
+                    map(automol.reac.ts_graph, automol.reac.from_chis(*c, stereo=False))
                 )
                 for c in chis
             ]
