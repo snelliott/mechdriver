@@ -46,7 +46,7 @@ spc global
         geolvl = dft
     )
     symm = (
-        mod = sampling
+        mod = HCO_model
         geolvl = dft
     )
     ts = (
