@@ -13,10 +13,10 @@ spc
 end spc
 
 els
-    spc init_geom     runlvl=dft    inplvl=dft
-    ts  find_ts       runlvl=dft    inplvl=dft
-    all conf_energy   runlvl=mp2    inplvl=dft
-    all conf_hess     runlvl=dft    inplvl=dft
+    spc init_geom     runlvl=pm3    inplvl=pm3
+    ts  find_ts       runlvl=pm3    inplvl=pm3
+    all conf_energy   runlvl=dft    inplvl=pm3
+    all conf_hess     runlvl=pm3    inplvl=pm3
 end els
 
 thermo
