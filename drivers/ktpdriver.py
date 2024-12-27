@@ -65,19 +65,18 @@ def run(pes_rlst, pes_grp_dct,
         print('WORKING ON PES')
         print(pes_grp_rlst, pes_param_dct)
 
-        # Generate the paths needed for MESSRATE calculations
-        rate_paths_dct = rate_paths(
-            pes_grp_rlst,
-            run_prefix,
-            prefix=write_rate_tsk[-1]['kin_model'])
-
+        
         # Process info required ro run all of the PESs
         if write_rate_tsk is not None:
             nprocs = write_rate_tsk[-1]['nprocs']
+            pref_kin_model = write_rate_tsk[-1]['kin_model']
         elif run_fit_tsk is not None:
             nprocs = run_fit_tsk[-1]['nprocs']
+            pref_kin_model = run_fit_tsk[-1]['kin_model']
         else:
             nprocs = run_rate_tsk[-1]['nprocs']
+            pref_kin_model = run_rate_tsk[-1]['kin_model']
+            
         if write_rate_tsk is not None:
             proc_tsk = write_rate_tsk
         else:
@@ -87,6 +86,12 @@ def run(pes_rlst, pes_grp_dct,
             spc_mod_dct, spc_dct, glob_dct,
             run_prefix, save_prefix, nprocs=nprocs)
 
+        # Generate the paths needed for MESSRATE calculations
+        rate_paths_dct = rate_paths(
+            pes_grp_rlst,
+            run_prefix,
+            prefix=pref_kin_model)
+        
         # ---------------------------------------- #
         # WRITE AND RUN TASK FOR EACH PES IN GROUP #
         # ---------------------------------------- #
