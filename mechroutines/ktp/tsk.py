@@ -75,7 +75,7 @@ def write_messrate_task(pesgrp_num, pes_inf, rxn_lst,
 def run_messrate_task(pes_inf, rxn_lst, tsk_key_dct, spc_dct, rate_paths_dct):
     """ Run the MESSRATE input file.
 
-        First tries to run a well-extended file, then tries to
+        First tries to run a well-lumped file, then tries to
         run the base file if it exists.
 
         Need an overwrite task
@@ -84,12 +84,12 @@ def run_messrate_task(pes_inf, rxn_lst, tsk_key_dct, spc_dct, rate_paths_dct):
     _, pes_idx, _ = pes_inf
 
     # Get the path to the MESSRATE file to run
-    # (1) Vers1-Base, (2) Vers1-WellExtend, (3) Vers2-Base
+    # (1) Vers1-Base, (2) Vers1-WellLump, (3) Vers2-Base
     path_dct = rate_paths_dct[pes_inf]
     mess_version = tsk_key_dct['mess_version']
     if (
         mess_version == 'v1' and
-        tsk_key_dct['well_extension'] and
+        tsk_key_dct['well_lumping'] and
         not is_abstraction_pes(spc_dct, rxn_lst, pes_idx)
     ):
         path = path_dct[f'wext-{mess_version}']
@@ -110,7 +110,7 @@ def run_messrate_task(pes_inf, rxn_lst, tsk_key_dct, spc_dct, rate_paths_dct):
                 f'at {path}')
         else:
             ioprinter.running(
-                f'MESS well-extended input with version {mess_version} '
+                f'MESS well-lumped input with version {mess_version} '
                 f'at {path}')
         autorun.run_script(
             autorun.SCRIPT_DCT[f'messrate-{mess_version}'], path
@@ -122,7 +122,7 @@ def run_messrate_task(pes_inf, rxn_lst, tsk_key_dct, spc_dct, rate_paths_dct):
                 f'found at {path}')
         else:
             ioprinter.warning_message(
-                f'No MESS well-extended input for version {mess_version} '
+                f'No MESS well-lumped input for version {mess_version} '
                 f'found at {path}')
 
 
