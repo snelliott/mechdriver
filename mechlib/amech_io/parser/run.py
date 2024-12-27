@@ -111,14 +111,14 @@ TSK_KEY_DCT = {
     'coeffs': (('spc', 'ts'), ()),
     # KTP/Therm
     'write_mess': ((), ('kin_model', 'spc_model', 'overwrite',
-                        'well_extension', 'mess_version',
+                        'well_extension', 'well_lumping', 'mess_version',
                         'float_precision',
                         'cnf_range', 'sort', 'nprocs')),
     'run_mess': ((), ('kin_model', 'spc_model', 'nprocs',
-                      'well_extension', 'mess_version',
+                      'well_lumping', 'mess_version',
                       'cnf_range', 'sort')),
-    'run_fits': ((), ('kin_model',
-                      'well_extension', 'mess_version',
+    'run_fits': ((), ('kin_model', 'spc_model',
+                      'well_lumping', 'mess_version',
                       'combine',
                       'cnf_range', 'sort', 'nprocs',)),
 }
@@ -172,6 +172,7 @@ TSK_VAL_DCT = {
     'nprocs': ((int,), (), 9),
     'mess_version': ((str,), ('v1', 'v2'), 'v1'),
     'well_extension': ((bool,), (), False),
+    'well_lumping': ((bool,), (), False),
     'combine': ((str,), ('stereo',), None),
     'linked_pes': ((tuple,), (), None),
     'float_precision': ((str,), ('double', 'quadruple'), 'double'),
@@ -403,19 +404,22 @@ def _check_tsks(tsk_lsts, thy_dct):
             if len(_tsk) == 2:
                 # Case(1): spc task keywords (ESDriver)
                 obj, tsk = _tsk[0], _tsk[1]
-            else:
-                # Case(2): task keywords (ThermoDriver, kTPDriver)
-                obj, tsk = None, _tsk[0]
-            key_dct = tsk_lst[-1]
-
-            # Check if the obj is allowed
-            if obj is not None:
                 # Have to make lst to handle case where obj == 'all'
                 obj_lst = SUPP_OBJS if obj == 'all' else (obj,)
-                for _obj in obj_lst:
-                    if _obj not in TSK_KEY_DCT[tsk][0]:
-                        error_message(f'obj {obj}, not allowed for {tsk}')
-                        sys.exit()
+                allowed_keys = TSK_KEY_DCT[tsk][0]
+            else:
+                # Case(2): task keywords (ThermoDriver, kTPDriver)
+                tsk = _tsk[0]
+                obj_lst = list(tsk_lst[1].keys())
+                allowed_keys = TSK_KEY_DCT[tsk][1]
+                
+            for _obj in obj_lst:
+                if _obj not in allowed_keys:
+                    error_message(f'obj {_obj}, not allowed for {tsk}')
+                    print(f'Allowed keys: {" ".join(allowed_keys)}')
+                    sys.exit()
+
+            key_dct = tsk_lst[-1]
 
             # Check if keyword values are allowed
             check_dct1(key_dct, TSK_VAL_DCT, (), 'Task')
