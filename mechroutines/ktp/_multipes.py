@@ -199,16 +199,16 @@ def _single_pes_ktp_dct(pes_grp_rlst,
 
     # Read options
     mess_version = tsk_key_dct['mess_version']
-    use_well_extension = tsk_key_dct['well_extension']
+    use_well_lumping = tsk_key_dct['well_lumping']
 
     # Read the appropriate file based on desired versions
     pes_inf = tuple(pes_grp_rlst.keys())[0]
 
-    if mess_version == 'v1' and use_well_extension:
+    if mess_version == 'v1' and use_well_lumping:
         typ = f'wext-{mess_version}'
         mess_path = mess_paths_dct[pes_inf][typ]
         mess_str = rate_strs_dct[pes_inf][typ]['ktp_out']
-    elif mess_version == 'v1' and not use_well_extension:
+    elif mess_version == 'v1' and not use_well_lumping:
         typ = f'base-{mess_version}'
         mess_path = mess_paths_dct[pes_inf][typ]
         mess_str = rate_strs_dct[pes_inf][typ]['ktp_out']
@@ -259,7 +259,7 @@ def _prompt_dissociation_ktp_dct(pes_grp_rlst,
     for (pes_inf, rxn_lst) in pes_grp_rlst.items():
         _, pes_idx, _ = pes_inf
         if (
-            tsk_key_dct['well_extension'] and
+            tsk_key_dct['well_lumping'] and
             not is_abstraction_pes(spc_dct, rxn_lst, pes_idx)
         ):
             typ = 'wext-v1'
