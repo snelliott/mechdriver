@@ -71,8 +71,13 @@ def internal_coordinates_scan(ts_zma, zrxn,
         retryfail=False,
         **kwargs,
     )
-
-    if find_max:
+    scan_finished_ = es_runner.scan.scan_finished(
+        coord_names=coord_names,
+        coord_grids=coord_grids,
+        scn_save_fs=_scn_save_fs,
+        constraint_dct=constraint_dct,
+    )
+    if scan_finished_ and find_max:
         include_endpts = not mref_params
         max_zmas = rxngrid.grid_maximum_zmatrices(
             automol.reac.class_(zrxn), ts_zma, coord_grids, coord_names, _scn_save_fs,

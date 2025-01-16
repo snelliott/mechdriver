@@ -212,9 +212,11 @@ def _find_max_2d(grid1, grid2, scan_name1, scan_name2,
     # Use the max locs to determine the max_zma, ret as tuple
     max_locs = locs
     print('max point on scan', max_locs)
-    max_zma = scn_save_fs[-1].file.zmatrix.read(max_locs)
-
-    return (max_zma,)
+    if max_locs:
+        max_zma = (scn_save_fs[-1].file.zmatrix.read(max_locs),)
+    else:
+        max_zma = None
+    return max_zma
 
 
 def _grid_vals(grid, scan_name, scn_save_fs,
