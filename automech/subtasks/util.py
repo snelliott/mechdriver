@@ -136,8 +136,6 @@ def parse_subtasks_nworkers(
 
     # Get the list of ChIs ordered by subtask key
     spc_df = parse_species_csv(file_dct.get("species.csv"))
-    if "inchi" not in spc_df:
-        spc_df["inchi"] = spc_df["smiles"].apply(automol.smiles.inchi)
 
     gras_lst = None
     if key_type == "spc":
@@ -206,7 +204,17 @@ def parse_species_csv(species_csv: str) -> pandas.DataFrame:
     :param species_csv: The contents of the species.csv file, as a string
     :return: The species table
     """
-    return pandas.read_csv(io.StringIO(species_csv), quotechar="'")
+    spc_df = pandas.read_csv(io.StringIO(species_csv), quotechar="'")
+
+    if "inchi" not in spc_df:
+        spc_df["inchi"] = spc_df["smiles"].apply(automol.smiles.chi)
+
+    if "canon_enant_ich" not in spc_df:
+        spc_df["canon_enant_ich"] = spc_df["inchi"].apply(
+            automol.chi.canonical_enantiomer
+        )
+
+    return spc_df
 
 
 def rotor_count_from_graphs(gras: Sequence[object]) -> int:
@@ -291,6 +299,29 @@ def sample_count_from_graph(
     ntors = len(automol.graph.rotational_bond_keys(gra, with_ch_rotors=False))
     nsamp = min(param_a + param_b * param_c**ntors, param_d)
     return nsamp
+
+
+# Functions acting on other chemical data
+def ts_multiplicity(
+    rct_muls: Sequence[int], prd_muls: Sequence[int], high: bool = False
+) -> int:
+    """Guess the TS multiplicity from reactants and products.
+
+    :param rct_muls: Reactant multiplicities
+    :param prd_muls: Product multiplicities
+    :param high: Whether to guess the high-spin multiplicity
+    :return: TS multiplicity
+    """
+    if len(rct_muls) == len(prd_muls) == 1:
+        return max(rct_muls[0], prd_muls[0])
+
+    rct_spin_sum = sum(m - 1 for m in rct_muls)
+    prd_spin_sum = sum(m - 1 for m in prd_muls)
+    ts_spin = (
+        max(rct_spin_sum, prd_spin_sum) if high else min(rct_spin_sum, prd_spin_sum)
+    )
+    ts_mul = int(round(ts_spin + 1))
+    return ts_mul
 
 
 # Functions acting on mechanism.dat data
@@ -520,7 +551,7 @@ def subtask_keys_from_run_dict(
 def task_lines_from_run_dict(
     run_dct: dict[str, str], task_type: str, key_type: str | None = None
 ) -> list[str]:
-    """Extract electronic structure tasks from  of a run.dat dictionary
+    """Extract tasks from a run.dat dictionary
 
     :param run_dct: The dictionary of a parsed run.dat file
     :param task_type: The type of task: 'els', 'thermo', or 'ktp'
@@ -545,6 +576,38 @@ def task_lines_from_run_dict(
     return lines
 
 
+def task_method_and_basis(
+    file_dct: dict[str, str],
+    task_key: str,
+    key_type: str,
+    runlvl: str | None = None,
+) -> tuple[str, str]:
+    """Extract the method and basis of a task from a file dictionary
+
+    :param run_dct: The dictionary of a parsed run.dat file
+    :param task_key: Task key
+    :param subtask_key: Subtask key
+    :param key_type: The type of subtask: 'spc', 'pes', or `None`
+    :return: A sequence of (task name, task line) pairs
+    """
+    run_dct = parse_run_dat(file_dct.get("run.dat"))
+    thys_dct = parse_theory_dat(file_dct.get("theory.dat"))
+
+    if runlvl is None:
+        task_lines = task_lines_from_run_dict(
+            run_dct, task_type="els", key_type=key_type
+        )
+        task_line = next(line for line in task_lines if task_key in line)
+        field_dct = parse_task_fields(task_line)
+        runlvl = field_dct.get("runlvl")
+
+
+    thy_dct = thys_dct.get(runlvl)
+    method = thy_dct.get("method")
+    basis = thy_dct.get("basis")
+    return (method, basis)
+
+
 # Generic string formatting functions
 def format_block(inp: str) -> str:
     """Format a block with nice indentation
@@ -563,6 +626,24 @@ def without_comments(inp: str) -> str:
     :return: The string, without comments
     """
     return re.sub(COMMENT_REGEX, "", inp)
+
+
+def subtask_key_type(key: str) -> str:
+    """Determine the type ('pes' or 'spc') of a subtask key.
+
+    :param key: Subtask key
+    :return: Subtask key type
+    """
+    return "spc" if is_species_subtask_key(key) else "pes"
+
+
+def is_species_subtask_key(key: str) -> bool:
+    """Determine whether a subtask key represents a species.
+
+    :param key: Subtask key
+    :return: `True` if yes, `False` if no
+    """
+    return key.strip().isdigit()
 
 
 def format_subtask_key(key: str) -> str:
