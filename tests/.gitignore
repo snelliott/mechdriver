@@ -1,5 +1,5 @@
 *
 !.gitignore
-!test_automech.py
+!test_workflow.py
 !config.yaml
 !archive.tgz

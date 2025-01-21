@@ -1,19 +1,20 @@
-"""End-to-end AutoMech tests
+"""End-to-end Workflow tests
 """
 
 import contextlib
 import os
 from pathlib import Path
 
-import automech
+import mechdriver
 import pytest
 import yaml
-from automech import test_utils
-from automech.test_utils import InvalidSignatureError
+from mechdriver import test_utils
+from mechdriver.test_utils import InvalidSignatureError
 
 ROOT_DIR = Path(__file__).parent.parent
 TEST_UTILS = test_utils.TestUtils(ROOT_DIR)
 TEST_DIRS = [n for n in yaml.safe_load(TEST_UTILS.config_file.read_text())]
+
 
 TEST_UTILS.extract_archived_tests()
 
@@ -43,7 +44,7 @@ def test_workflow(test_dir: str):
     os.chdir(test_dir)
 
     with contextlib.redirect_stdout(test_utils.Logger("out.log")):
-        automech.run()
+        mechdriver.run()
 
 
 if __name__ == "__main__":
