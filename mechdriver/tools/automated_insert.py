@@ -1,6 +1,6 @@
-""" Add a species to your database
-usiing a log file
-po"""
+""" Add a species or TS to your database
+usiing a log or xyz file
+"""
 
 import sys
 import autofile
@@ -996,7 +996,7 @@ def rng_loc_for_geo(geo, cnf_fs):
     return rid
 
 
-def parse_script_input(script_input_file):
+def parse_script_options(script_input_file):
     script_input = ioformat.pathtools.read_file(
         '', script_input_file, print_debug=True).splitlines()
     insert_dct = {
@@ -1151,8 +1151,3 @@ def _struct_based_on_input(
             sys.exit()
     return geo, zma, ene, hess_job
 
-
-if __name__ == '__main__':
-    SCRIPT_INPUT_FILE = sys.argv[1] if len(sys.argv) > 1 else "insert_options.txt"
-    insert_options_dct = parse_script_input(SCRIPT_INPUT_FILE)
-    main(insert_options_dct)

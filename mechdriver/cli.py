@@ -3,6 +3,7 @@ import subprocess
 import click
 
 from . import subtasks
+from . import tools
 from .base import Status, check_log, run
 
 
@@ -201,3 +202,15 @@ def subtasks_status_(
 ):
     """Check the status of running subtasks"""
     subtasks.status(path=path, dir_name=dir_name, check_file=check_file, wrap=wrap)
+
+@main.command()
+@click.option(
+    "-o",
+    "--options",
+    default="insert_options.txt",
+    show_default=True,
+    help="option file, example in mechdriver/automech/tools/insert_options.txt",
+)
+def automated_insert(options):
+    insert_options_dct = tools.automated_insert.parse_script_options(options)
+    tools.automated_insert.main(insert_options_dct)

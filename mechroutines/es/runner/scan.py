@@ -34,7 +34,7 @@ def execute_scan(zma, spc_info, mod_thy_info,
     """
 
     # Need a resave option
-    _fin = _scan_finished(
+    _fin = scan_finished(
         coord_names, coord_grids, scn_save_fs,
         constraint_dct=constraint_dct, overwrite=overwrite)
 
@@ -522,7 +522,7 @@ def scan_locs(scn_save_fs, coord_names, constraint_dct=None):
     return coord_locs, scn_locs
 
 
-def _scan_finished(coord_names, coord_grids, scn_save_fs,
+def scan_finished(coord_names, coord_grids, scn_save_fs,
                    constraint_dct=None, overwrite=False):
     """ Assesses if the scan calculations requested by the user have been
         completed by assessing if Z-Matrices exist in the filesystem for

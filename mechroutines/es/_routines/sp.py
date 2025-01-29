@@ -350,8 +350,10 @@ def run_hessian(zma, geo, spc_info, thy_info,
                     too_many_imags = (
                         (zrxn is not None and nimags > 1) or
                         (zrxn is None and nimags > 0))
+                    too_few_imags = zrxn is not None and nimags < 1
                 else:
                     too_many_imags = False
+                    too_few_imags = False
 
                 # If requested, determine if there are frequencies below thrsh
                 correct_low_vals = False
@@ -363,9 +365,9 @@ def run_hessian(zma, geo, spc_info, thy_info,
                 else:
                     has_low_freqs = False
 
-                if too_many_imags or has_low_freqs:
+                if too_many_imags or too_few_imags or has_low_freqs:
                     ioprinter.info_message(
-                        'Too many negative freqs or low freqs', hfrqs)
+                        'Too many/few negative freqs or low freqs', hfrqs)
                     rinf_obj = run_fs[-1].file.info.read(
                         [elstruct.Job.HESSIAN])
                     rinf_obj.status = autofile.schema.RunStatus.FAILURE
