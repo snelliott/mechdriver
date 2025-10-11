@@ -167,15 +167,15 @@ def _check_supported_vals(inp_dct, val_dct, req_lst, section):
 def _check_required_keys(inp_dct, req_lst, section):
     """Check if required keys are in the input dict"""
 
-    inp_keys = set(inp_dct.keys())
-    req_keys = set(req_lst)
-    undefined_required_keys = req_keys - inp_keys
-
-    if undefined_required_keys:
-        print(f"Required keywords have not been defined in {section}")
-        for key in undefined_required_keys:
-            print(key)
-        sys.exit()
+    for req in req_lst:
+        if isinstance(req, tuple):
+            assert any(key in inp_dct for key in req), (
+                f"At least one of {req} must be present in dictionary section: {section}"
+            )
+        else:
+            assert req in inp_dct, (
+                f"Required key '{req}' missing from dictionary section: {section}"
+            )
 
 
 def check_thy_lvls(key_dct, method_dct, section=""):
