@@ -15,12 +15,13 @@ from mechlib.amech_io.parser._keywrd import right_update
 # DCTS
 # rquired, Type, allowed, default,
 # maybe set defaults using the qchem params script?
-THY_REQ = ('program', 'method', 'orb_res')
+THY_REQ = ('program', ('method', 'model'), 'orb_res')
 THY_VAL_DCT = {
     'program': ((str,), (), None),
     'method': ((str,), (), None),
     'basis': ((str,), (), None),
     'orb_res': ((str, tuple), (), None),
+    'model': ((str,), (), None),
     'mem': ((float,), (), None),
     'nprocs': ((int,), (), None),
     'econv': ((float,), (), None),
@@ -60,4 +61,11 @@ def theory_dictionary(thy_str):
     for lvl, dct in full_thy_dct.items():
         check_dct1(dct, THY_VAL_DCT, THY_REQ, f'Thy-{lvl}')
 
+    for lvl, dct in full_thy_dct.items():
+        if dct['model'] is not None:
+            model = 'model_' + dct['model']
+            if dct['method'] is not None:
+                print(f"WARNING: Overriding user-defined method {dct['method']} "
+                      f"with model {model} for level {lvl}")
+            dct['method'] = model
     return full_thy_dct

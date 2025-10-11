@@ -15,13 +15,38 @@ import elstruct
 from autorun import SCRIPT_DCT
 
 
+def _ase(method_dct, prog, job=None, geo=None, spc_info=None):
+    """Build the kwargs dictionary for ASE calculator setup and execution.
+
+    :param method_dct: Dictionary of calculation parameters
+    :type method_dct: dict[str: obj]
+    :param job: electronic structure calculation type
+    :type job: str
+    :param geo: geometry
+    :type geo: automol.geom.Geom
+    :param spc_info: Species info tuple containing (ich, chg, mult)
+    :type spc_info: tuple
+    :rtype: dict
+    """
+    nprocs = method_dct.get("nprocs", 9)
+    memory = method_dct.get("mem", 20)
+    nprocs = nprocs if nprocs is not None else 9
+    memory = memory if memory is not None else 20
+
+    kwargs = {}
+    # Build the submission script string
+    script_str = method_dct.get('program', 'ase') 
+
+    return script_str, kwargs
+
+
 def qchem_params(method_dct, job=None, geo=None, spc_info=None):
     """Build the kwargs dictionary and BASH submission script string to
     be used to write and run the electronic structure job.
 
     :param method_dct:
     :type method_dct: dict[str: obj]
-    :param job: elstronic structure calculation
+    :param job: electronic structure calculation
     :type job: str
     :rtype: (dict[str:tuple(str)], str)
     """
@@ -383,6 +408,9 @@ def _orca(method_dct, prog, job=None, geo=None, spc_info=None):
 
 
 INI_PARAM_BUILD_DCT = {
+    elstruct.Program.ASE: _ase,
+    elstruct.Program.ASE_PSI4: _ase,
+    elstruct.Program.ASE_MACE: _ase,
     elstruct.Program.GAUSSIAN09: _gaussian,
     elstruct.Program.GAUSSIAN16: _gaussian,
     elstruct.Program.MOLPRO2021: _molpro,

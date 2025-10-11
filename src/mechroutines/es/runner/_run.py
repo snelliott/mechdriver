@@ -217,6 +217,7 @@ def read_job(job, run_fs):
         inf_obj = run_fs[-1].file.info.read([job])
         inp_str = run_fs[-1].file.input.read([job])
         out_str = run_fs[-1].file.output.read([job])
+        
         prog = inf_obj.prog
         ret = (inf_obj, inp_str, out_str)
 

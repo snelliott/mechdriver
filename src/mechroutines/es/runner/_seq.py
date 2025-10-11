@@ -229,7 +229,6 @@ def options_matrix_run(input_writer, script_str, prefix,
             # failure
             print("\n - Robust run sequence has failed ")
             break
-
     return inp_str, out_str
 
 
