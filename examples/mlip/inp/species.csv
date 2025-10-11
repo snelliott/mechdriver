@@ -1,0 +1,7 @@
+name,smiles,mult,charge
+H,'[H]',2,0
+H2,'[H][H]',1,0
+CH4,'C',1,0
+CH3,'[CH3]',2,0
+H2O,'O',1,0
+OH,'[OH]',2,0
