@@ -1,0 +1,16 @@
+
+input
+    run_prefix = ./run
+    save_prefix = ./save
+end input
+
+spc
+    1-6
+end spc
+
+els
+    spc init_geom     runlvl=pm3    inplvl=pm3
+    all conf_energy   runlvl=off    inplvl=pm3
+    all conf_energy   runlvl=b3s    inplvl=pm3
+end els
+

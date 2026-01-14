@@ -1,0 +1,34 @@
+level pm3
+    method = pm3
+    orb_res = RU
+    program = gaussian16
+    mem = 1.0
+    nprocs = 1
+end level
+
+level dft
+    method = bp86
+    basis = def2-sv(p)
+    orb_res = RU
+    program = gaussian16
+    mem = 2.0
+    nprocs = 1
+end level
+
+level b3s
+    method = b3lyp
+    basis = sto-3g
+    orb_res = RU
+    program = ase_psi4
+    mem = 1.0
+    nprocs = 1
+end level
+
+level off
+    model = off_small 
+    orb_res = RU
+    program = ase_mace
+    mem = 1.0
+    nprocs = 1
+end level
+
