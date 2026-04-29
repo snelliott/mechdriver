@@ -558,7 +558,7 @@ def conformer_sampling(zma, spc_info: tuple, mod_thy_info: tuple,
             nsampd += 1
             samp_idx += 1
             cinf_obj.nsamp = nsampd
-            cnf_save_fs[1].file.info.write(cinf_obj, [ref_rid])
+            cnf_save_fs[1].file.info.write(cinf_obj, [rid])
             cnf_run_fs[1].file.info.write(cinf_obj, [ref_rid])
 
         # Increment attempt counter
