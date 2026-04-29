@@ -57,10 +57,10 @@ pac99 = ">=1.6.0"
 projrot = ">=1.8.0"
 thermp = ">=0.7.0"
 mess-static = ">=2026.2.4"
-autochem = "==0.2026.2"
+autochem = "==0.2026.3"
 autoio = "==0.2026.0"
 autofile = "==0.2025.0"
-mechanalyzer = "==0.2026.0"
+mechanalyzer = "==0.2026.1"
 
 #   - Environments
 [tool.pixi.pypi-dependencies]
@@ -83,10 +83,10 @@ pac99 = ">=1.6.0"
 projrot = ">=1.8.0"
 thermp = ">=0.7.0"
 mess-static = ">=2026.2.4"
-autochem = "==0.2026.2"
+autochem = "==0.2026.3"
 autoio = "==0.2026.0"
 autofile = "==0.2025.0"
-mechanalyzer = "==0.2026.0"
+mechanalyzer = "==0.2026.1"
 
 [tool.pixi.feature.build.dependencies]
 rattler-build = ">=0.47.1"
@@ -105,11 +105,11 @@ autoio = { path = "../autoio", editable = true }
 autofile = { path = "../autofile", editable = true }
 mechanalyzer = { path = "../mechanalyzer", editable = true }
 
-# [tool.pixi.feature.dev.pypi-options.dependency-overrides]
-# autochem = { path = "../autochem", editable = true }
-# autoio = { path = "../autoio", editable = true }
-# autofile = { path = "../autofile", editable = true }
-# mechanalyzer = { path = "../mechanalyzer", editable = true }
+[tool.pixi.feature.dev.pypi-options.dependency-overrides]
+autochem = { path = "../autochem", editable = true }
+autoio = { path = "../autoio", editable = true }
+autofile = { path = "../autofile", editable = true }
+mechanalyzer = { path = "../mechanalyzer", editable = true }
 
 [tool.pixi.system-requirements]
 linux = "3.10"
