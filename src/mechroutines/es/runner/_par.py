@@ -53,9 +53,9 @@ def _gaussian(method_dct, prog, job=None, geo=None, spc_info=None):
     _, _ = geo, spc_info
 
     # Set the options
-    nprocs = method_dct.get("nprocs", 9)
+    ncpus = method_dct.get("ncpus", 9)
     memory = method_dct.get("mem", 20)
-    nprocs = nprocs if nprocs is not None else 9
+    ncpus = ncpus if ncpus is not None else 9
     memory = memory if memory is not None else 20
 
     method = method_dct.get("method")
@@ -64,7 +64,7 @@ def _gaussian(method_dct, prog, job=None, geo=None, spc_info=None):
     script_str = SCRIPT_DCT[prog]
 
     # Build the options dictionary
-    machine_options = [f"%NProcShared={nprocs}"]
+    machine_options = [f"%NProcShared={ncpus}"]
 
     gen_lines = method_dct.get("gen_lines", {})
     if not gen_lines:
@@ -160,20 +160,20 @@ def _molpro(method_dct, prog, job=None, geo=None, spc_info=None):
     # Pull stuff from the method_dct
     method = method_dct.get("method")
     if method in ("caspt2", "caspt2c", "caspt2i"):
-        nprocs = method_dct.get("nprocs", 4)
+        ncpus = method_dct.get("ncpus", 4)
         memory = method_dct.get("mem", 20)
         econv = method_dct.get("econv", 1.0e-6)
         gconv = method_dct.get("gconv", 3.0e-4)
-        nprocs = nprocs if nprocs is not None else 4
+        ncpus = ncpus if ncpus is not None else 4
         memory = memory if memory is not None else 10
         econv = econv if econv is not None else 1.0e-6
         gconv = gconv if gconv is not None else 3.0e-4
     else:
-        nprocs = method_dct.get("nprocs", 4)
+        ncpus = method_dct.get("ncpus", 4)
         memory = method_dct.get("mem", 20)
         econv = method_dct.get("econv", 1.0e-6)
         gconv = method_dct.get("gconv", 3.0e-4)
-        nprocs = nprocs if nprocs is not None else 4
+        ncpus = ncpus if ncpus is not None else 4
         memory = memory if memory is not None else 20
         econv = econv if econv is not None else 1.0e-6
         gconv = gconv if gconv is not None else 3.0e-4
@@ -184,7 +184,7 @@ def _molpro(method_dct, prog, job=None, geo=None, spc_info=None):
 
     # Build the script string
     prog = prog + "_mppx" if method_dct["mppx"] else prog
-    script_str = SCRIPT_DCT[prog].format(nprocs)
+    script_str = SCRIPT_DCT[prog].format(ncpus)
 
     # Set glob thresholds line
     thrsh_line = f"gthresh,orbital={econv:.1E}".replace("E", "d")
@@ -273,9 +273,9 @@ def _psi4(method_dct, prog, job=None, geo=None, spc_info=None):
 
     # Job unneeded for now
     method = method_dct.get("method")
-    nprocs = method_dct.get("nprocs", 8)
+    ncpus = method_dct.get("ncpus", 8)
     memory = method_dct.get("mem", 10)
-    nprocs = nprocs if nprocs is not None else 8
+    ncpus = ncpus if ncpus is not None else 8
     memory = memory if memory is not None else 10
 
     # Build the submission script string
@@ -331,15 +331,15 @@ def _qchem(method_dct, prog, job=None, geo=None, spc_info=None):
     _, _ = geo, spc_info
 
     # Set the options
-    nprocs = method_dct.get("nprocs", 8)
+    ncpus = method_dct.get("ncpus", 8)
     memory = method_dct.get("mem", 20)
-    nprocs = nprocs if nprocs is not None else 8
+    ncpus = ncpus if ncpus is not None else 8
     memory = memory if memory is not None else 20
 
     method = method_dct.get("method")
 
     # Build the submission script string
-    script_str = SCRIPT_DCT[prog].format(nprocs)
+    script_str = SCRIPT_DCT[prog].format(ncpus)
 
     kwargs = {
         "memory": memory,
@@ -361,18 +361,18 @@ def _orca(method_dct, prog, job=None, geo=None, spc_info=None):
     _, _ = geo, spc_info
 
     # Set the options
-    nprocs = method_dct.get("nprocs", 8)
+    ncpus = method_dct.get("ncpus", 8)
     memory = method_dct.get("mem", 20)
-    nprocs = nprocs if nprocs is not None else 8
+    ncpus = ncpus if ncpus is not None else 8
     memory = memory if memory is not None else 20
 
     method = method_dct.get("method")
 
     # Build the options dictionary
-    machine_options = [f"%PAL NPROCS {nprocs} END"]
+    machine_options = [f"%PAL NPROCS {ncpus} END"]
 
     # Build the submission script string
-    script_str = SCRIPT_DCT[prog].format(nprocs)
+    script_str = SCRIPT_DCT[prog].format(ncpus)
 
     kwargs = {
         "memory": memory,

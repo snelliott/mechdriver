@@ -77,24 +77,27 @@ def run(pes_rlst, spc_rlst,
     if write_messpf_tsk is not None:
         cnf_range = write_messpf_tsk[-1]['cnf_range']
         sort_str = write_messpf_tsk[-1]['sort']
-        nprocs = write_messpf_tsk[-1]['nprocs']
+        ncpus = write_messpf_tsk[-1]['ncpus']
+        gpu_id = write_messpf_tsk[-1]['gpu_id']
         _, pes_mod = parser.models.extract_models(write_messpf_tsk)
     elif run_fit_tsk is not None:
         cnf_range = run_fit_tsk[-1]['cnf_range']
         sort_str = run_fit_tsk[-1]['sort']
-        nprocs = run_fit_tsk[-1]['nprocs']
+        ncpus = run_fit_tsk[-1]['ncpus']
+        gpu_id = run_fit_tsk[-1]['gpu_id']
         _, pes_mod = parser.models.extract_models(run_fit_tsk)
     else:
         cnf_range = run_messpf_tsk[-1]['cnf_range']
         sort_str = run_messpf_tsk[-1]['sort']
-        nprocs = run_messpf_tsk[-1]['nprocs']
+        ncpus = run_messpf_tsk[-1]['ncpus']
+        gpu_id = run_messpf_tsk[-1]['gpu_id']
         _, pes_mod = parser.models.extract_models(run_messpf_tsk)
     ret = _set_spc_queue(
         spc_mod_dct, pes_rlst, spc_rlst,
         run_fit_tsk,
         spc_dct, thy_dct,
         save_prefix, run_prefix,
-        cnf_range, sort_str, nprocs=nprocs, pes_mod=pes_mod)
+        cnf_range, sort_str, ncpus=ncpus, gpu_id=gpu_id, pes_mod=pes_mod)
     spc_grp_dct, spc_locs_dct, thm_paths_dct, sort_info_lst = ret
 
     # ----------------------------------- #
@@ -127,7 +130,7 @@ def run(pes_rlst, spc_rlst,
         spc_dct = thermo_tasks.get_heats_of_formation(
             spc_locs_dct, spc_dct, spc_mods, spc_mod_dct,
             ref_scheme, ref_enes, run_prefix, save_prefix, 
-            nprocs=nprocs)
+            ncpus=ncpus, gpu_id=gpu_id)
 
         # Combine species for pf generation
         tsk_key_dct = run_fit_tsk[-1]
@@ -162,7 +165,7 @@ def _set_spc_queue(
         spc_dct, thy_dct,
         save_prefix, run_prefix,
         cnf_range='min', sort_str=None, spc_grp_dct=None,
-        nprocs=1, pes_mod=''):
+        ncpus=1, pes_mod=''):
     """ Determine the list of species to do thermo on
     """
     # Build various species lists
@@ -170,7 +173,7 @@ def _set_spc_queue(
     spc_mod_dct_i = spc_mod_dct[spc_mods[0]]
     sort_info_lst = filesys.mincnf.sort_info_lst(sort_str, thy_dct)
     split_rlst = split_unstable_full(
-        pes_rlst, spc_rlst, spc_dct, spc_mod_dct_i, save_prefix, nprocs=nprocs)
+        pes_rlst, spc_rlst, spc_dct, spc_mod_dct_i, save_prefix, ncpus=ncpus)
 
     # Dict for run_fits task
     spc_grp_dct = None
@@ -187,7 +190,7 @@ def _set_spc_queue(
     # Set locs and paths to species we will be doing calcs for
     spc_locs_dct = _set_spc_locs_dct(
         spc_queue, spc_dct, spc_mod_dct_i, run_prefix, save_prefix,
-        cnf_range, sort_info_lst, nprocs=nprocs)
+        cnf_range, sort_info_lst, ncpus=ncpus)
     thm_paths = thermo_paths(
         spc_dct, spc_locs_dct, spc_mods, run_prefix,
         spc_grp_dct, pes_mod)
@@ -197,12 +200,12 @@ def _set_spc_queue(
 
 def _set_spc_locs_dct(
         spc_queue, spc_dct, spc_mod_dct_i, run_prefix, save_prefix,
-        cnf_range='min', sort_info_lst=None, saddle=False, nprocs=1):
+        cnf_range='min', sort_info_lst=None, saddle=False, ncpus=1):
     """ get a dictionary of locs
     """
     def _par_spc_locs_dct_setter(
             spc_dct, spc_mod_dct_i, run_prefix, save_prefix,
-            cnf_range, sort_info_lst, saddle, nlocs_procs,
+            cnf_range, sort_info_lst, saddle, nlocs_cpus,
             spc_queue, output_queue=None):
         spc_locs_dct = {}
 
@@ -211,20 +214,20 @@ def _set_spc_locs_dct(
                 spc_dct[spc_name], spc_mod_dct_i,
                 run_prefix, save_prefix, saddle=saddle,
                 cnf_range=cnf_range, sort_info_lst=sort_info_lst,
-                nprocs=nlocs_procs)
+                ncpus=nlocs_cpus)
             spc_locs_dct[spc_name] = spc_locs_lst
         output_queue.put((spc_locs_dct,))
-    nspc_procs = 1
-    nlocs_procs = 1
-    if len(spc_queue) >= nprocs:
-        nspc_procs = nprocs
+    nspc_cpus = 1
+    nlocs_cpus = 1
+    if len(spc_queue) >= ncpus:
+        nspc_cpus = ncpus
     else:
-        nlocs_procs = nprocs
+        nlocs_cpus = ncpus
     args = (
         spc_dct, spc_mod_dct_i, run_prefix, save_prefix,
-        cnf_range, sort_info_lst, saddle, nlocs_procs)
+        cnf_range, sort_info_lst, saddle, nlocs_cpus)
     sub_spc_locs_dct_lst = execute_function_in_parallel(
-        _par_spc_locs_dct_setter, spc_queue, args, nprocs=nspc_procs)
+        _par_spc_locs_dct_setter, spc_queue, args, ncpus=nspc_cpus)
     # fill dictionary in order
     spc_locs_dct = {}
     for spc in spc_queue:

@@ -22,8 +22,7 @@ def write_messrate_task(pesgrp_num, pes_inf, rxn_lst,
                         spc_dct,
                         thy_dct, pes_model_dct, spc_model_dct,
                         unstab_chnls, label_dct,
-                        rate_paths_dct, run_prefix, save_prefix,
-                        nprocs=1):
+                        rate_paths_dct, run_prefix, save_prefix):
     """ Reads and processes all information in the save filesys for
         all species on the PES that are required for MESS rate calculations,
         as specified by the model dictionaries built from user input.
@@ -43,6 +42,7 @@ def write_messrate_task(pesgrp_num, pes_inf, rxn_lst,
 
     pes_mod = tsk_key_dct['kin_model']
     spc_mod = tsk_key_dct['spc_model']
+    ncpus = tsk_key_dct.get('ncpus', 1)
 
     pes_model_dct_i = pes_model_dct[pes_mod]
     spc_model_dct_i = spc_model_dct[spc_mod]
@@ -53,7 +53,7 @@ def write_messrate_task(pesgrp_num, pes_inf, rxn_lst,
         run_prefix, save_prefix, label_dct,
         tsk_key_dct, pes_param_dct,
         thy_dct, pes_model_dct_i, spc_model_dct_i, spc_mod,
-        nprocs=nprocs)
+        ncpus=ncpus)
 
     # Write the energy transfer section strings for MESS file
     energy_trans_str = make_global_etrans_str(
@@ -67,7 +67,7 @@ def write_messrate_task(pesgrp_num, pes_inf, rxn_lst,
         pesgrp_num, pes_param_dct, hot_enes_dct,
         rate_paths_dct, pes_inf,
         pes_model_dct_i,
-        spc_dct, rxn_lst, pes_idx, tsk_key_dct)
+        spc_dct, rxn_lst, pes_idx, tsk_key_dct, ncpus=ncpus)
 
     return pes_param_dct
 
@@ -82,7 +82,9 @@ def run_messrate_task(pes_inf, rxn_lst, tsk_key_dct, spc_dct, rate_paths_dct):
     """
 
     _, pes_idx, _ = pes_inf
-
+    ncpus = tsk_key_dct.get('ncpus', 1)
+    gpu_id = tsk_key_dct.get('gpu_id', 0)
+    
     # Get the path to the MESSRATE file to run
     # (1) Vers1-Base, (2) Vers1-WellLump, (3) Vers2-Base
     path_dct = rate_paths_dct[pes_inf]

@@ -185,7 +185,7 @@ def conformer_tsk(job, spc_dct, spc_name,
     mod_thy_info = tinfo.modify_orb_label(thy_info, spc_info)
     mod_ini_thy_info = tinfo.modify_orb_label(
         ini_thy_info, spc_info)
-    nprocs = method_dct['nprocs']
+    ncpus = method_dct['ncpus']
     
     # Create/locate filesystem for running/saving
     _root = root_locs(
@@ -206,7 +206,7 @@ def conformer_tsk(job, spc_dct, spc_name,
         # Determine the initial conformers to sample from
         user_conf_ids = spc_dct_i.get('conf_id')
         all_locs, all_paths = filesys.mincnf.conformer_locators(
-            ini_cnf_save_fs, mod_ini_thy_info, cnf_range='all', nprocs=nprocs)
+            ini_cnf_save_fs, mod_ini_thy_info, cnf_range='all', ncpus=ncpus)
         ini_confs = []
         ### TODO give option to only sample minimum ring state
         ### (currently done on individual case by user specifying conf_id)
@@ -290,7 +290,7 @@ def conformer_tsk(job, spc_dct, spc_name,
         checks = es_keyword_dct['checks']
         # Build the ini zma filesys
         ini_loc_info = filesys.mincnf.min_energy_conformer_locators(
-            ini_cnf_save_fs, mod_ini_thy_info, nprocs=nprocs)
+            ini_cnf_save_fs, mod_ini_thy_info, ncpus=ncpus)
         ini_min_locs, ini_min_cnf_path = ini_loc_info
         
         if not ini_min_cnf_path:
@@ -361,14 +361,14 @@ def conformer_tsk(job, spc_dct, spc_name,
         # collect the conformers saved at the run LoT
         rng_cnf_locs_lst, _ = filesys.mincnf.conformer_locators(
             cnf_save_fs, mod_thy_info,
-            cnf_range='all', nprocs=nprocs, print_level=0)
+            cnf_range='all', ncpus=ncpus, print_level=0)
         
         # choose conformers from the ini LoT to optimize at run LoT
         ini_rng_cnf_locs_lst, _ = filesys.mincnf.conformer_locators(
             ini_cnf_save_fs, mod_ini_thy_info,
             cnf_range=cnf_range, sort_info_lst=cnf_sort_info_lst,
             hbond_cutoffs=hbond_cutoffs,
-            print_level=2, nprocs=nprocs)
+            print_level=2, ncpus=ncpus)
 
         if not ini_rng_cnf_locs_lst:
             ioprinter.warning_message(
@@ -427,7 +427,7 @@ def conformer_tsk(job, spc_dct, spc_name,
         rng_cnf_locs_lst, _ = filesys.mincnf.conformer_locators(
             cnf_save_fs, mod_thy_info,
             cnf_range=cnf_range, sort_info_lst=cnf_sort_info_lst,
-            hbond_cutoffs=hbond_cutoffs, nprocs=nprocs)
+            hbond_cutoffs=hbond_cutoffs, ncpus=ncpus)
         for locs in rng_cnf_locs_lst:
             geo = cnf_save_fs[-1].file.geometry.read(locs)
             ioprinter.geometry(geo)
@@ -445,7 +445,7 @@ def conformer_tsk(job, spc_dct, spc_name,
                 ini_cnf_save_fs, mod_ini_thy_info,
                 cnf_range=cnf_range, sort_info_lst=cnf_sort_info_lst,
                 hbond_cutoffs=hbond_cutoffs,
-                print_level=2, nprocs=nprocs)
+                print_level=2, ncpus=ncpus)
         else:
             print(f'Using user specified conformer IDs: {user_conf_ids}')
             ini_rng_cnf_locs_lst = (user_conf_ids,)
@@ -783,8 +783,8 @@ def hr_tsk(job, spc_dct, spc_name,
     retryfail = es_keyword_dct['retryfail']
     tors_model = es_keyword_dct['tors_model']
     # 1c) how parallelized do we wanna be
-    # nprocs = es_keyword_dct['nprocs']
-    nprocs = 1
+    ncpus = es_keyword_dct['ncpus']
+    #ncpus = 1
 
     # 1d) Modify the theory  info
     method_dct = thy_dct.get(es_keyword_dct['runlvl'])
@@ -814,7 +814,7 @@ def hr_tsk(job, spc_dct, spc_name,
             ini_cnf_save_fs, mod_ini_thy_info,
             cnf_range=cnf_range, sort_info_lst=cnf_sort_info_lst,
             hbond_cutoffs=hbond_cutoffs,
-            print_level=2, nprocs=nprocs)
+            print_level=2, ncpus=ncpus)
     else:
         ini_min_locs_lst = (user_conf_ids,)
         ini_path_lst = (ini_cnf_save_fs[-1].path(user_conf_ids),)
@@ -826,7 +826,7 @@ def hr_tsk(job, spc_dct, spc_name,
             **_root)
         all_run_cnf_locs_lst, _ = filesys.mincnf.conformer_locators(
             cnf_save_fs, mod_thy_info,
-            cnf_range='all', nprocs=nprocs)
+            cnf_range='all', ncpus=ncpus)
         ini_to_run_locs_dct = filesys.mincnf.fs_confs_dict(
             cnf_save_fs, all_run_cnf_locs_lst,
             ini_cnf_save_fs, ini_min_locs_lst)

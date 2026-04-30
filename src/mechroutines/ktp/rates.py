@@ -303,7 +303,7 @@ def make_pes_mess_str(spc_dct, rxn_lst, pes_idx, pesgrp_num,
                       run_prefix, save_prefix, label_dct,
                       tsk_key_dct, pes_param_dct,
                       thy_dct, pes_model_dct_i, spc_model_dct_i,
-                      spc_model, nprocs=1):
+                      spc_model, ncpus=1):
     """ Write all the MESS input file strings for the reaction channels
     """
 
@@ -322,7 +322,7 @@ def make_pes_mess_str(spc_dct, rxn_lst, pes_idx, pesgrp_num,
         rxn_lst, spc_dct, tsk_key_dct,
         basis_energy_dct[spc_model],
         thy_dct, pes_model_dct_i, spc_model_dct_i,
-        run_prefix, save_prefix, ref_idx=0, nprocs=nprocs)
+        run_prefix, save_prefix, ref_idx=0, ncpus=ncpus)
     basis_energy_dct[spc_model].update(model_basis_energy_dct)
 
     # Loop over all the channels and write the MESS strings
@@ -344,7 +344,7 @@ def make_pes_mess_str(spc_dct, rxn_lst, pes_idx, pesgrp_num,
             spc_dct, tsk_key_dct,
             basis_energy_dct[spc_model],
             thy_dct, pes_model_dct_i, spc_model_dct_i,
-            run_prefix, save_prefix, nprocs=nprocs)
+            run_prefix, save_prefix, ncpus=ncpus)
 
         basis_energy_dct[spc_model].update(chn_basis_ene_dct)
 
@@ -774,7 +774,7 @@ def get_channel_data(reacs, prods, tsname_allconfigs,
                      spc_dct, tsk_key_dct,
                      model_basis_energy_dct,
                      thy_dct, pes_model_dct_i, spc_model_dct_i,
-                     run_prefix, save_prefix, nprocs=1):
+                     run_prefix, save_prefix, ncpus=1):
     """ For all species and transition state for the channel and
         read all required data from the save filesys, then process and
         format it to be able to write it into a MESS filesystem.
@@ -803,13 +803,13 @@ def get_channel_data(reacs, prods, tsname_allconfigs,
                 spc_dct[rgt], spc_model_dct_i,
                 run_prefix, save_prefix, saddle=False,
                 cnf_range=cnf_range, sort_info_lst=sort_info_lst,
-                name=rgt, nprocs=nprocs)
+                name=rgt, ncpus=ncpus)
             chnl_infs_i, model_basis_energy_dct = build.read_spc_data(
                 spc_dct, rgt,
                 pes_model_dct_i, spc_model_dct_i,
                 run_prefix, save_prefix, model_basis_energy_dct,
                 calc_ene_trans=_need_ene_trans,
-                spc_locs=spc_locs_lst[0])
+                spc_locs=spc_locs_lst[0] if spc_locs_lst else None)
             chnl_infs[side].append(chnl_infs_i)
 
     # Get data for all configurations for a TS
@@ -819,7 +819,7 @@ def get_channel_data(reacs, prods, tsname_allconfigs,
             spc_dct[name], spc_model_dct_i,
             run_prefix, save_prefix, saddle=True,
             cnf_range=cnf_range, sort_info_lst=sort_info_lst,
-            name=name, nprocs=nprocs)
+            name=name, ncpus=ncpus)
         spc_locs = spc_locs_lst[0] if spc_locs_lst else None
         inf_dct, model_basis_energy_dct = build.read_ts_data(
             spc_dct, name, reacs, prods,

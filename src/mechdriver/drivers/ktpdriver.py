@@ -72,13 +72,13 @@ def run(pes_rlst, pes_grp_dct,
         
         # Process info required ro run all of the PESs
         if write_rate_tsk is not None:
-            nprocs = write_rate_tsk[-1]['nprocs']
+            ncpus = write_rate_tsk[-1]['ncpus']
             pref_kin_model = write_rate_tsk[-1]['kin_model']
         elif run_fit_tsk is not None:
-            nprocs = run_fit_tsk[-1]['nprocs']
+            ncpus = run_fit_tsk[-1]['ncpus']
             pref_kin_model = run_fit_tsk[-1]['kin_model']
         else:
-            nprocs = run_rate_tsk[-1]['nprocs']
+            ncpus = run_rate_tsk[-1]['ncpus']
             pref_kin_model = run_rate_tsk[-1]['kin_model']
             
         if write_rate_tsk is not None:
@@ -91,7 +91,7 @@ def run(pes_rlst, pes_grp_dct,
         spc_dct, all_rxn_lst, all_instab_chnls, label_dct = _process(
             proc_tsk, ktp_tsk_lst, pes_grp_rlst,
             spc_mod_dct, spc_dct, glob_dct,
-            run_prefix, save_prefix, nprocs=nprocs)
+            run_prefix, save_prefix, ncpus=ncpus)
 
         # Generate the paths needed for MESSRATE calculations
         rate_paths_dct = rate_paths(
@@ -109,7 +109,8 @@ def run(pes_rlst, pes_grp_dct,
 
             # Write the MESS file
             if write_rate_tsk is not None:
-                nprocs = write_rate_tsk[-1]['nprocs']
+                ncpus = write_rate_tsk[-1]['ncpus']
+                gpu_id = write_rate_tsk[-1]['gpu_id']
                 tsk_key_dct = write_rate_tsk[-1]
                 pes_param_dct = ktp_tasks.write_messrate_task(
                     pesgrp_num, pes_inf, all_rxn_lst[pesgrp_num],
@@ -117,11 +118,12 @@ def run(pes_rlst, pes_grp_dct,
                     spc_dct,
                     thy_dct, pes_mod_dct, spc_mod_dct,
                     all_instab_chnls[pesgrp_num], label_dct,
-                    rate_paths_dct, run_prefix, save_prefix, nprocs=nprocs)
+                    rate_paths_dct, run_prefix, save_prefix)
 
             # Run mess to produce rates (currently nothing from tsk lst used)
             if run_rate_tsk is not None:
-                nprocs = run_rate_tsk[-1]['nprocs']
+                ncpus = run_rate_tsk[-1]['ncpus']
+                gpu_id = run_rate_tsk[-1]['gpu_id']
                 tsk_key_dct = run_rate_tsk[-1]
                 ktp_tasks.run_messrate_task(
                     pes_inf, all_rxn_lst[pesgrp_num],
@@ -133,7 +135,8 @@ def run(pes_rlst, pes_grp_dct,
 
         # Fit rates to functional forms; write parameters to ChemKin file
         if run_fit_tsk is not None:
-            nprocs = run_fit_tsk[-1]['nprocs']
+            ncpus = run_fit_tsk[-1]['ncpus']
+            gpu_id = run_fit_tsk[-1]['gpu_id']
             tsk_key_dct = run_fit_tsk[-1]
             ktp_tasks.run_fits_task(
                 pes_grp_rlst, pes_param_dct, rate_paths_dct, mdriver_path,
@@ -146,7 +149,7 @@ def run(pes_rlst, pes_grp_dct,
 # ------- #
 def _process(tsk, ktp_tsk_lst, pes_grp_rlst,
              spc_mod_dct, spc_dct, glob_dct,
-             run_prefix, save_prefix, nprocs=1):
+             run_prefix, save_prefix, ncpus=1):
     """ Build info needed for the task
     """
 
@@ -167,7 +170,7 @@ def _process(tsk, ktp_tsk_lst, pes_grp_rlst,
             'Identifying reaction classes for transition states...')
         ts_dct, rxn_lst = parser.spc.ts_dct_from_ktptsks(
             pes_idx, rxn_lst, ktp_tsk_lst, spc_mod_dct,
-            spc_dct, run_prefix, save_prefix, nprocs=nprocs)
+            spc_dct, run_prefix, save_prefix, ncpus=ncpus)
         # for non-identified/assigned TSs, should we re-write the rxn_lst???
         spc_dct = parser.spc.combine_sadpt_spc_dcts(
             ts_dct, spc_dct, glob_dct)
@@ -175,7 +178,7 @@ def _process(tsk, ktp_tsk_lst, pes_grp_rlst,
         # Set reaction list with unstable species broken apart
         ioprinter.message('Identifying stability of all species...', newline=1)
         chkd_rxn_lst, instab_chnls = split_unstable_pes(
-            rxn_lst, spc_dct, spc_mod_dct_i, save_prefix, nprocs=nprocs)
+            rxn_lst, spc_dct, spc_mod_dct_i, save_prefix, ncpus=ncpus)
 
         all_chkd_rxn_lst += (chkd_rxn_lst,)
         all_instab_chnls += (instab_chnls,)
