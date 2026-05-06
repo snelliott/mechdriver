@@ -22,7 +22,7 @@ THY_VAL_DCT = {
     'basis': ((str,), (), None),
     'orb_res': ((str, tuple), (), None),
     'mem': ((float,), (), None),
-    'nprocs': ((int,), (), None),
+    'ncpus': ((int,), (), None),
     'econv': ((float,), (), None),
     'gconv': ((float,), (), None),
     'mppx': ((bool,), (), False),
@@ -55,6 +55,14 @@ def theory_dictionary(thy_str):
     for lvl, dct in thy_dct.items():
         full_thy_dct[lvl] = right_update(
             defaults_from_val_dct(THY_VAL_DCT), dct)
+
+    # Backward compatibility: convert nprocs to ncpus
+    for lvl, dct in full_thy_dct.items():
+        if 'nprocs' in dct:
+            if 'ncpus' not in dct or dct['ncpus'] is None:
+                dct['ncpus'] = dct['nprocs']
+            # Remove nprocs from the dictionary
+            del dct['nprocs']
 
     # Check each dictionary
     for lvl, dct in full_thy_dct.items():

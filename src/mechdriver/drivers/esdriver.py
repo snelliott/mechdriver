@@ -67,20 +67,23 @@ def run(pes_rlst, spc_rlst,
         # Loop over the tasks
         for tsk_lst in es_tsk_lst:
 
+            # Unpack the options
+            [obj, tsk, es_keyword_dct] = tsk_lst
+            
             # Build a TS dictionary and add it to the spc dct if needed
             # will only build a ts dct for 1st ts task on the PES
             if (fml != 'SPC' and tsk_lst[0] in ('ts', 'all')):
                 if ts_dct is None:
+                    method_dct = thy_dct.get(es_keyword_dct['runlvl'], {})
+                    ncpus = method_dct['ncpus'] if 'ncpus' in method_dct else 1 
                     ts_dct = parser.spc.ts_dct_from_estsks(
                         pes_idx, es_tsk_lst, run_lst,
                         thy_dct, spc_dct,
-                        run_prefix, save_prefix)
+                        run_prefix, save_prefix, cpus=ncpus)
                     spc_dct = parser.spc.combine_sadpt_spc_dcts(
                         ts_dct, spc_dct, glob_dct)
             ts_queue = tuple(x for x in ts_dct) if ts_dct is not None else ()
 
-            # Unpack the options
-            [obj, tsk, es_keyword_dct] = tsk_lst
 
             # Build the queue of species based on user request
             if obj == 'all':

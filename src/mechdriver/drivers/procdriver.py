@@ -38,7 +38,7 @@ def run(pes_rlst, spc_rlst,
                     pes_idx, proc_tsk_lst, run_lst_i,
                     spc_mod_dct['global'],
                     thy_dct, spc_dct,
-                    run_prefix, save_prefix)
+                    run_prefix, save_prefix, cpus=1)
                 # doesnt allow for info from .dat file or internal defaults
                 spc_dct.update(ts_dct)
                 # Doesnt work it ts species from earlier part of for loop lost

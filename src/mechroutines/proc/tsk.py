@@ -85,7 +85,7 @@ def run_tsk(tsk, obj_queue,
                 run_prefix, save_prefix, col_array, miss_data)
             ret_lst = execute_function_in_parallel(
                 _run_task_for_locs_lst, list(rng_cnf_locs_lst), args,
-                nprocs=proc_keyword_dct['nprocs'])
+                nprocs=proc_keyword_dct['ncpus'])
             species_csv_data = {}
             species_miss_data = ()
             if 'freqs' in tsk:                                                

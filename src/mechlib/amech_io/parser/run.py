@@ -53,7 +53,7 @@ RUN_INP_VAL_DCT = {
 BASE = ('runlvl', 'inplvl', 'retryfail', 'overwrite')
 MREF = ('var_splvl1', 'var_splvl2', 'var_scnlvl')
 TRANS = ('njobs', 'nsamp', 'conf', 'cnf_range', 'sort')
-PRNT = ('geolvl', 'proplvl', 'cnf_range', 'sort', 'nprocs', 'spc_model', 'kin_model')
+PRNT = ('geolvl', 'proplvl', 'cnf_range', 'sort', 'ncpus', 'ngpus', 'spc_model', 'kin_model')
 
 # Supported object types for task (useful if task requestes 'all')
 SUPP_OBJS = ('spc', 'ts')
@@ -113,14 +113,14 @@ TSK_KEY_DCT = {
     'write_mess': ((), ('kin_model', 'spc_model', 'overwrite',
                         'well_extension', 'well_lumping', 'mess_version',
                         'float_precision',
-                        'cnf_range', 'sort', 'nprocs')),
-    'run_mess': ((), ('kin_model', 'spc_model', 'nprocs',
+                        'cnf_range', 'sort', 'ncpus', 'gpu_id')),
+    'run_mess': ((), ('kin_model', 'spc_model', 'ncpus',
                       'well_lumping', 'mess_version',
-                      'cnf_range', 'sort')),
+                      'cnf_range', 'sort', 'ncpus', 'gpu_id')),
     'run_fits': ((), ('kin_model', 'spc_model',
                       'well_lumping', 'mess_version',
                       'combine',
-                      'cnf_range', 'sort', 'nprocs',)),
+                      'cnf_range', 'sort', 'ncpus', 'gpu_id')),
 }
 
 # tsk: (object types, (allowed values), default)  # use functions for weird
@@ -169,7 +169,8 @@ TSK_VAL_DCT = {
     # KTP/Therm
     'kin_model': ((str,), (), None),
     'spc_model': ((str,), (), None),
-    'nprocs': ((int,), (), 9),
+    'ncpus': ((int,), (), 9),
+    'gpu_id': ((int,), (), 0),
     'mess_version': ((str,), ('v1', 'v2'), 'v1'),
     'well_extension': ((bool,), (), False),
     'well_lumping': ((bool,), (), False),
@@ -376,7 +377,16 @@ def _tsk_defaults(tsk_lst):
         mod_tsk_lst = []
         for _tsk_lst in tsk_lst:
             keyword_dct = _tsk_lst[-1]
-            tsk = _tsk_lst[:-1][-1]
+            tsk = _tsk_lst[-2]
+            
+            # Handle backward compatibility: convert nprocs to ncpus in user input
+            # If both are present, ncpus wins
+            if 'nprocs' in keyword_dct:
+                if 'ncpus' not in keyword_dct or keyword_dct['ncpus'] is None:
+                    keyword_dct['ncpus'] = keyword_dct['nprocs']
+                # Remove nprocs from the dictionary
+                del keyword_dct['nprocs']
+            
             default_dct = defaults_from_key_val_dcts(
                 tsk, TSK_KEY_DCT, TSK_VAL_DCT)
             new_key_dct = right_update(

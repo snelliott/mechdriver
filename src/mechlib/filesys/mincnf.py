@@ -19,7 +19,7 @@ from mechlib.amech_io import printer as ioprinter
 
 
 def min_energy_conformer_locators(
-        cnf_save_fs, mod_thy_info, hbond_cutoffs=None, nprocs=1,
+        cnf_save_fs, mod_thy_info, hbond_cutoffs=None, ncpus=1,
         print_level=1):
     """ Obtain the (ring-id, tors-id) filesystem locator pair and
         path for the conformer of a species with the lowest energy
@@ -33,12 +33,12 @@ def min_energy_conformer_locators(
         :rtype: (tuple(str, str), str)
     """
 
-    if nprocs is None:
-        nprocs = 1
+    if ncpus is None:
+        ncpus = 1
 
     locs, paths = conformer_locators(
         cnf_save_fs, mod_thy_info,
-        cnf_range='min', hbond_cutoffs=hbond_cutoffs, nprocs=nprocs,
+        cnf_range='min', hbond_cutoffs=hbond_cutoffs, ncpus=ncpus,
         print_level=print_level)
     if locs and paths:
         ret = locs[0], paths[0]
@@ -51,7 +51,7 @@ def min_energy_conformer_locators(
 def conformer_locators(
         cnf_save_fs, mod_thy_info,
         cnf_range='min', sort_info_lst=None, print_level=1,
-        hbond_cutoffs=None, nprocs=1):
+        hbond_cutoffs=None, ncpus=1):
     """ Obtain the (ring-id, tors-id) filesystem locator pair and
         path for all conformers meeting
 
@@ -82,7 +82,7 @@ def conformer_locators(
             only_hbnds=True, only_nonhbnds=True,
             freq_info=None, sp_info=None, sort_prop_dct=None,
             print_level=1, already_counted_locs_lst=(), hbond_cutoffs=None,
-            nprocs=1):
+            ncpus=1):
 
         fin_locs_lst, fin_paths_lst = (), ()
         cnf_locs_lst = cnf_save_fs[-1].existing()
@@ -90,7 +90,7 @@ def conformer_locators(
             cnf_locs_lst, cnf_enes_lst = _sorted_cnf_lsts(
                 cnf_locs_lst, cnf_save_fs, mod_thy_info,
                 freq_info=freq_info, sp_info=sp_info,
-                sort_prop_dct=sort_prop_dct, nprocs=nprocs)
+                sort_prop_dct=sort_prop_dct, ncpus=ncpus)
             if only_hbnds:
                 cnf_locs_lst, cnf_enes_lst = _remove_nonhbonded_structures(
                     cnf_save_fs, cnf_locs_lst, cnf_enes_lst,
@@ -143,8 +143,8 @@ def conformer_locators(
 
         return fin_locs_lst, fin_paths_lst
 
-    if nprocs is None:
-        nprocs = 1
+    if ncpus is None:
+        ncpus = 1
 
     cnf_range_nohb, cnf_range_hb, cnf_range_any = _process_cnf_range(
         cnf_range)
@@ -159,7 +159,7 @@ def conformer_locators(
             print_level=print_level,
             already_counted_locs_lst=union_locs_lst,
             hbond_cutoffs=hbond_cutoffs,
-            nprocs=nprocs)
+            ncpus=ncpus)
         union_locs_lst += tmp_locs_lst
         union_paths_lst += tmp_paths_lst
     if cnf_range_nohb is not None:
@@ -171,7 +171,7 @@ def conformer_locators(
             print_level=print_level,
             already_counted_locs_lst=union_locs_lst,
             hbond_cutoffs=hbond_cutoffs,
-            nprocs=nprocs)
+            ncpus=ncpus)
         union_locs_lst += tmp_locs_lst
         union_paths_lst += tmp_paths_lst
 
@@ -184,7 +184,7 @@ def conformer_locators(
             print_level=print_level,
             already_counted_locs_lst=union_locs_lst,
             hbond_cutoffs=hbond_cutoffs,
-            nprocs=nprocs)
+            ncpus=ncpus)
         union_locs_lst += tmp_locs_lst
         union_paths_lst += tmp_paths_lst
 
@@ -193,7 +193,7 @@ def conformer_locators(
 
 def _sorted_cnf_lsts(
         cnf_locs_lst, cnf_save_fs, mod_thy_info,
-        freq_info=None, sp_info=None, sort_prop_dct=None, nprocs=1):
+        freq_info=None, sp_info=None, sort_prop_dct=None, ncpus=1):
     """ Sort the list of conformer locators in the save filesystem
         using the energies from the specified electronic structure method.
         The conformers are sorted such that the energies are sorted
@@ -237,7 +237,7 @@ def _sorted_cnf_lsts(
                 )
         locs_enes_dct_lst = execute_function_in_parallel(
             _parallel_get_sort_energy_parameters, cnf_locs_lst,
-            args, nprocs=nprocs)
+            args, nprocs=ncpus)
         first_ene = None
         for locs_enes_dct in locs_enes_dct_lst:
             for locs in locs_enes_dct:

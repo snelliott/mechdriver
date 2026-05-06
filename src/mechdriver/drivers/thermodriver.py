@@ -227,7 +227,7 @@ def _set_spc_locs_dct(
         spc_dct, spc_mod_dct_i, run_prefix, save_prefix,
         cnf_range, sort_info_lst, saddle, nlocs_cpus)
     sub_spc_locs_dct_lst = execute_function_in_parallel(
-        _par_spc_locs_dct_setter, spc_queue, args, ncpus=nspc_cpus)
+        _par_spc_locs_dct_setter, spc_queue, args, nprocs=nspc_cpus)
     # fill dictionary in order
     spc_locs_dct = {}
     for spc in spc_queue:
