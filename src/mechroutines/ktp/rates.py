@@ -83,7 +83,7 @@ def make_full_str(energy_trans_str, rxn_chan_str, dats,
             float_type,
             pes_mod_dct_i, spc_dct,
             rate_paths_dct, pes_inf,
-            rxn_lst, pes_idx)
+            rxn_lst, pes_idx, tsk_key_dct)
 
     return pes_param_dct
 
@@ -122,6 +122,11 @@ def _full_mess_v1(energy_trans_str, rxn_chan_str, dats,
     else:
         well_extend = None
 
+    # Extract GPU parameters from task dictionary if present
+    gpu_size = tsk_key_dct.get('gpu_size', None)
+    gpu_id = tsk_key_dct.get('gpu_id', None)
+    ncpu = tsk_key_dct.get('ncpu', 8)
+
     globkey_str = mess_io.writer.global_rates_input_v1(
         temps, pressures,
         calculation_method='direct',
@@ -134,6 +139,8 @@ def _full_mess_v1(energy_trans_str, rxn_chan_str, dats,
         hot_enes_dct=hot_enes_dct,
         micro_out_params=micro_out_params,
         float_type=float_type,
+        gpu_size=gpu_size,
+        gpu_id=gpu_id,
         ktp_outname='rate.out',
         ke_outname='ke.out',
         ped_outname='ped.out',
@@ -165,7 +172,8 @@ def _full_mess_v1(energy_trans_str, rxn_chan_str, dats,
 
         # Run the base MESSRATE
         print(f'  - Running MESS base job at path {base_mess_path}')
-        autorun.run_script(autorun.SCRIPT_DCT['messrate-v1'], base_mess_path)
+        mess_script = autorun.messrate_script(ncpu=ncpu, version='v1')
+        autorun.run_script(mess_script, base_mess_path)
 
         # Write the well-extended MESSRATE file
         rate_strs_dct, mess_paths_dct = reader.mess.rate_strings(
@@ -198,7 +206,8 @@ def _full_mess_v1(energy_trans_str, rxn_chan_str, dats,
         
         print(f'  - Running MESS base job at path {base_mess_path}')
         print('  - Warning, old base results overwritten.')
-        autorun.run_script(autorun.SCRIPT_DCT['messrate-v1'], base_mess_path)
+        mess_script = autorun.messrate_script(ncpu=ncpu, version='v1')
+        autorun.run_script(mess_script, base_mess_path)
         
         if tsk_key_dct['well_lumping']:
             print('  - Setting up the well-Lumped MESSRATE input with')
@@ -227,7 +236,7 @@ def _full_mess_v2(energy_trans_str, rxn_chan_str, dats,
                   float_type,
                   pes_mod_dct_i, spc_dct,
                   rate_paths_dct, pes_inf,
-                  rxn_lst, pes_idx):
+                  rxn_lst, pes_idx, tsk_key_dct):
     """ Make the global header string for MESS version 2
     """
 
@@ -236,6 +245,10 @@ def _full_mess_v2(energy_trans_str, rxn_chan_str, dats,
     else:
         well_extend = 0.001
         ioprinter.debug_message('Including WellExtend in MESS input')
+
+    # Extract GPU parameters from task dictionary if present
+    gpu_size = tsk_key_dct.get('gpu_size', None)
+    gpu_id = tsk_key_dct.get('gpu_id', None)
 
     globkey_str = mess_io.writer.global_rates_input_v2(
             temps, pressures,
@@ -250,6 +263,8 @@ def _full_mess_v2(energy_trans_str, rxn_chan_str, dats,
             ped_spc_lst=ped_spc_lst, hot_enes_dct=hot_enes_dct,
             micro_out_params=micro_out_params,
             float_type=float_type,
+            gpu_size=gpu_size,
+            gpu_id=gpu_id,
             ktp_outname='rate.out',
             ke_outname='ke.out',
             ped_outname='ped.out',
