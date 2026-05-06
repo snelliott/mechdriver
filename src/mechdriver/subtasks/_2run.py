@@ -130,6 +130,7 @@ def setup_job(
                         deps=dep_funcs,
                         cpus=task.nprocs,
                         mem=task.mem,
+                        gpus=task.ngpus,
                         workers=subtask.nworkers,
                     )
 
@@ -146,6 +147,7 @@ def assign_function(
     deps: Sequence[hq.Function],
     cpus: int,
     mem: int,
+    gpus: int = 0,
     workers: int = 1,
 ) -> hq.Function:
     r"""Assign function(s) to HyperQueue job.
@@ -169,6 +171,7 @@ def assign_function(
     :param deps: Dependencies
     :param cpus: Number of CPUs
     :param mem: Amount of memory (GB)
+    :param gpus: Number of GPUs (default: 0)
     :param workers: How many workers to assign to this task
     :return: HyperQueue task
     """
@@ -184,13 +187,14 @@ def assign_function(
                 deps=deps,
                 cpus=cpus,
                 mem=mem,
+                gpus=gpus,
                 ignore_error=True,
             )
             for p in log_paths
         ]
 
     return assign_atomic_function(
-        job=job, path=path, log_path=log_path, deps=deps, cpus=cpus, mem=mem
+        job=job, path=path, log_path=log_path, deps=deps, cpus=cpus, mem=mem, gpus=gpus
     )
 
 
@@ -201,6 +205,7 @@ def assign_atomic_function(
     deps: Sequence[hq.Function],
     cpus: int,
     mem: int,
+    gpus: int = 0,
     lock: bool = True,
     ignore_error: bool = True,
 ) -> hq.Function:
@@ -214,7 +219,7 @@ def assign_atomic_function(
     lock_path = log_path.with_suffix(Extension.running)
     run_ = lock_wrapper(run_, lock_file=lock_path) if lock else run_
 
-    resources = hq.resource_request(cpus=cpus, mem=mem)
+    resources = hq.resource_request(cpus=cpus, mem=mem, gpus=gpus)
     stdout = stderr = str(log_path)
     return job.function(
         fn=run_, cwd=path, stdout=stdout, stderr=stderr, deps=deps, resources=resources

@@ -64,13 +64,17 @@ def job() -> Job:
 
 
 @requires_hyperqueue
-def resource_request(cpus: int, mem: int) -> ResourceRequest:
+def resource_request(cpus: int, mem: int, gpus: int = 0) -> ResourceRequest:
     """Create HyperQueue resource request.
 
     :param cpus: Number of CPUs
     :param mem: Memory in GB
+    :param gpus: Number of GPUs (default: 0)
     """
-    return ResourceRequest(cpus=cpus, resources={"mem": memory_mib(mem)})
+    resources = {"mem": memory_mib(mem)}
+    if gpus > 0:
+        resources["gpus"] = gpus
+    return ResourceRequest(cpus=cpus, resources=resources)
 
 
 # Execute system commands

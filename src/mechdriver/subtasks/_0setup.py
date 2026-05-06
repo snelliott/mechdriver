@@ -49,6 +49,7 @@ class Task(pydantic.BaseModel):
     line: str
     mem: int
     nprocs: int
+    ngpus: int
     subtasks: list[Subtask]
 
     def __rtruediv__(self, path: str | Path):
@@ -293,6 +294,7 @@ def determine_task_list(
                 line=task_line,
                 mem=util.parse_task_memory(task_line, file_dct),
                 nprocs=util.parse_task_nprocs(task_line, file_dct),
+                ngpus=util.parse_task_ngpus(task_line, file_dct),
                 subtasks=subtasks,
             )
         )

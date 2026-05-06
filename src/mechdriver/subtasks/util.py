@@ -108,15 +108,45 @@ def parse_task_nprocs(task_line: str, file_dct: dict[str, str]) -> int:
 
     nprocs = 1
 
-    if "nprocs" in field_dct:
+    # Check for ncpus (new) first, then nprocs (old) for backward compatibility
+    if "ncpus" in field_dct:
+        nprocs = int(float(field_dct.get("ncpus")))
+    elif "nprocs" in field_dct:
         nprocs = int(float(field_dct.get("nprocs")))
 
     if "runlvl" in field_dct:
         lvl = field_dct.get("runlvl")
         theory_dct = parse_theory_dat(file_dct.get("theory.dat"))
-        nprocs = int(float(theory_dct.get(lvl).get("nprocs")))
+        # Check for ncpus (new) first, then nprocs (old)
+        if "ncpus" in theory_dct.get(lvl, {}):
+            nprocs = int(float(theory_dct.get(lvl).get("ncpus")))
+        elif "nprocs" in theory_dct.get(lvl, {}):
+            nprocs = int(float(theory_dct.get(lvl).get("nprocs")))
 
     return nprocs
+
+
+def parse_task_ngpus(task_line: str, file_dct: dict[str, str]) -> int:
+    """Read the ngpus spec for a given task
+
+    :param task_line: The task line from the run.dat file
+    :param file_dct: The file dictionary
+    :return: The number of GPUs for the task
+    """
+    field_dct = parse_task_fields(task_line)
+
+    ngpus = 0
+
+    if "ngpus" in field_dct:
+        ngpus = int(float(field_dct.get("ngpus")))
+
+    if "runlvl" in field_dct:
+        lvl = field_dct.get("runlvl")
+        theory_dct = parse_theory_dat(file_dct.get("theory.dat"))
+        if "ngpus" in theory_dct.get(lvl, {}):
+            ngpus = int(float(theory_dct.get(lvl).get("ngpus")))
+
+    return ngpus
 
 
 def parse_subtasks_nworkers(
