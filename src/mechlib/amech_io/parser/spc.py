@@ -8,6 +8,7 @@ import mechanalyzer
 from mechanalyzer.inf import thy as tinfo
 from mechanalyzer.inf import rxn as rinfo
 from phydat import symm, eleclvl, phycon
+from autorun import execute_function_in_parallel
 from mechlib.reaction import rxnid
 from mechlib.reaction import _util as rxn_util
 from mechlib.filesys import reaction_fs
@@ -219,7 +220,7 @@ def combine_sadpt_spc_dcts(sadpt_dct, spc_dct, glob_dct):
 
 # Functions to the spc_dct contributions for TS
 def ts_dct_from_estsks(pes_idx, es_tsk_lst, rxn_lst, thy_dct,
-                       spc_dct, run_prefix, save_prefix):
+                       spc_dct, run_prefix, save_prefix, ncpus=1):
     """ build a ts queue
     """
 
@@ -245,14 +246,42 @@ def ts_dct_from_estsks(pes_idx, es_tsk_lst, rxn_lst, thy_dct,
         if 'find_ts' in obj:
             re_id = es_keyword_dct.get('re_id', False)
 
-    ts_dct = {}
-    for rxn in rxn_lst:
-        ts_dct.update(
-            ts_dct_sing_chnl(
-                pes_idx, rxn,
-                spc_dct, run_prefix, save_prefix,
-                thy_info=thy_info, ini_thy_info=ini_thy_info, re_id=re_id)
-        )
+    # Define parallel function for processing reactions
+    def _parallel_ts_dct_from_estsks(
+            pes_idx, spc_dct, run_prefix, save_prefix,
+            thy_info, ini_thy_info, re_id, rxn_lst,
+            output_queue):
+        ts_dct_partial = {}
+        for rxn in rxn_lst:
+            ts_dct_partial.update(
+                ts_dct_sing_chnl(
+                    pes_idx, rxn,
+                    spc_dct, run_prefix, save_prefix,
+                    thy_info=thy_info, ini_thy_info=ini_thy_info, re_id=re_id)
+            )
+        output_queue.put((ts_dct_partial,))
+
+    # Execute in parallel if ncpus > 1 and rxn_lst has multiple items
+    if ncpus > 1 and len(rxn_lst) > 1:
+        args = (pes_idx, spc_dct, run_prefix, save_prefix,
+                thy_info, ini_thy_info, re_id)
+        ts_dct_lst = execute_function_in_parallel(
+            _parallel_ts_dct_from_estsks, rxn_lst,
+            args, nprocs=ncpus)
+        # Merge all partial dictionaries
+        ts_dct = {}
+        for ts_dct_partial in ts_dct_lst:
+            ts_dct.update(ts_dct_partial)
+    else:
+        # Serial execution
+        ts_dct = {}
+        for rxn in rxn_lst:
+            ts_dct.update(
+                ts_dct_sing_chnl(
+                    pes_idx, rxn,
+                    spc_dct, run_prefix, save_prefix,
+                    thy_info=thy_info, ini_thy_info=ini_thy_info, re_id=re_id)
+            )
 
     # Build the queue
     # ts_queue = tuple(sadpt for sadpt in ts_dct) if ts_dct else ()
@@ -263,7 +292,7 @@ def ts_dct_from_estsks(pes_idx, es_tsk_lst, rxn_lst, thy_dct,
 
 def ts_dct_from_ktptsks(pes_idx, rxn_lst, ktp_tsk_lst,
                         spc_model_dct,
-                        spc_dct, run_prefix, save_prefix, nprocs=1):
+                        spc_dct, run_prefix, save_prefix, ncpus=1):
     """ Build ts dct from ktp tsks
     """
 
@@ -275,27 +304,61 @@ def ts_dct_from_ktptsks(pes_idx, rxn_lst, ktp_tsk_lst,
             thy_info = spc_model_dct[spc_model]['ene']['lvl1'][1][1]
             break
 
-    ts_dct = {}
-    new_rxn_lst = []
-    for rxn in rxn_lst:
-        ts_dct_rxn = ts_dct_sing_chnl(
-            pes_idx, rxn,
-            spc_dct, run_prefix, save_prefix,
-            thy_info=thy_info, ini_thy_info=ini_thy_info)
-        if  ts_dct_rxn:
-            ts_dct.update(
-                ts_dct_rxn
-            )
-            new_rxn_lst.append(rxn)
-        else:
-            print('*Warning ts for rxn {} not found and not used to build ktp input.'.format(rxn))
-            # ideally: if it's a wellskipping rxn, keep going, otherwise, die
+    # Define parallel function for processing reactions
+    def _parallel_ts_dct_from_ktptsks(
+            pes_idx, spc_dct, run_prefix, save_prefix,
+            thy_info, ini_thy_info, rxn_lst,
+            output_queue):
+        ts_dct_partial = {}
+        new_rxn_lst_partial = []
+        for rxn in rxn_lst:
+            ts_dct_rxn = ts_dct_sing_chnl(
+                pes_idx, rxn,
+                spc_dct, run_prefix, save_prefix,
+                thy_info=thy_info, ini_thy_info=ini_thy_info)
+            if ts_dct_rxn:
+                ts_dct_partial.update(ts_dct_rxn)
+                new_rxn_lst_partial.append(rxn)
+            else:
+                print('*Warning ts for rxn {} not found and not used to build ktp input.'.format(rxn))
+        output_queue.put(((ts_dct_partial, new_rxn_lst_partial),))
+
+    # Execute in parallel if ncpus > 1 and rxn_lst has multiple items
+    if ncpus > 1 and len(rxn_lst) > 1:
+        args = (pes_idx, spc_dct, run_prefix, save_prefix,
+                thy_info, ini_thy_info)
+        result_lst = execute_function_in_parallel(
+            _parallel_ts_dct_from_ktptsks, rxn_lst,
+            args, nprocs=ncpus)
+        # Merge all partial dictionaries and lists
+        ts_dct = {}
+        new_rxn_lst = []
+        for ts_dct_partial, new_rxn_lst_partial in result_lst:
+            ts_dct.update(ts_dct_partial)
+            new_rxn_lst.extend(new_rxn_lst_partial)
+    else:
+        # Serial execution
+        ts_dct = {}
+        new_rxn_lst = []
+        for rxn in rxn_lst:
+            ts_dct_rxn = ts_dct_sing_chnl(
+                pes_idx, rxn,
+                spc_dct, run_prefix, save_prefix,
+                thy_info=thy_info, ini_thy_info=ini_thy_info)
+            if  ts_dct_rxn:
+                ts_dct.update(
+                    ts_dct_rxn
+                )
+                new_rxn_lst.append(rxn)
+            else:
+                print('*Warning ts for rxn {} not found and not used to build ktp input.'.format(rxn))
+                # ideally: if it's a wellskipping rxn, keep going, otherwise, die
             
     return ts_dct, new_rxn_lst
 
 
 def ts_dct_from_proctsks(pes_idx, proc_tsk_lst, rxn_lst, spc_mod_dct_i,
-                         thy_dct, spc_dct, run_prefix, save_prefix):
+                         thy_dct, spc_dct, run_prefix, save_prefix, ncpus=1):
     """ build a ts queue
     """
 
@@ -318,15 +381,44 @@ def ts_dct_from_proctsks(pes_idx, proc_tsk_lst, rxn_lst, spc_mod_dct_i,
                     proc_keyword_dct['proplvl']))
             break
 
-    ts_dct = {}
-    for rxn in rxn_lst:
-        ts_dct.update(
-            ts_dct_sing_chnl(
-                pes_idx, rxn,
-                spc_dct, run_prefix, save_prefix,
-                thy_info=thy_info, ini_thy_info=ini_thy_info,
-                id_missing=False)
-        )
+    # Define parallel function for processing reactions
+    def _parallel_ts_dct_from_proctsks(
+            pes_idx, spc_dct, run_prefix, save_prefix,
+            thy_info, ini_thy_info, rxn_lst,
+            output_queue):
+        ts_dct_partial = {}
+        for rxn in rxn_lst:
+            ts_dct_partial.update(
+                ts_dct_sing_chnl(
+                    pes_idx, rxn,
+                    spc_dct, run_prefix, save_prefix,
+                    thy_info=thy_info, ini_thy_info=ini_thy_info,
+                    id_missing=False)
+            )
+        output_queue.put((ts_dct_partial,))
+
+    # Execute in parallel if ncpus > 1 and rxn_lst has multiple items
+    if ncpus > 1 and len(rxn_lst) > 1:
+        args = (pes_idx, spc_dct, run_prefix, save_prefix,
+                thy_info, ini_thy_info)
+        ts_dct_lst = execute_function_in_parallel(
+            _parallel_ts_dct_from_proctsks, rxn_lst,
+            args, nprocs=ncpus)
+        # Merge all partial dictionaries
+        ts_dct = {}
+        for ts_dct_partial in ts_dct_lst:
+            ts_dct.update(ts_dct_partial)
+    else:
+        # Serial execution
+        ts_dct = {}
+        for rxn in rxn_lst:
+            ts_dct.update(
+                ts_dct_sing_chnl(
+                    pes_idx, rxn,
+                    spc_dct, run_prefix, save_prefix,
+                    thy_info=thy_info, ini_thy_info=ini_thy_info,
+                    id_missing=False)
+            )
 
     # Build the queue
     ts_queue = tuple(sadpt for sadpt in ts_dct) if ts_dct else ()
